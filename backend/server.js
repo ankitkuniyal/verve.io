@@ -20,7 +20,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Routes
 app.use('/api/auth', authRoutes);
-app.use('/api/analysis/essay-writing', essayRoutes);
+app.use('/api/essay', essayRoutes);
 app.use('/api/quiz', quizRoutes)
 app.use('/api/resume', resumeRoutes)
 // Health check
