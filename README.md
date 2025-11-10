@@ -1,9 +1,6 @@
 # Verve.io
 
-- Intelligent Interview Preparation Platform
-
-![Verve.io
-](https://images.unsplash.com/photo-1589254065878-42c9da997008?w=1200&h=600&fit=crop)
+- Intelligent Interview Platform
 
 ## 🚀 Overview
 
