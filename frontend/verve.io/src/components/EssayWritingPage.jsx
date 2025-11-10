@@ -144,8 +144,8 @@ const EssayWritingPage = () => {
                         <i className="fas fa-user-circle text-white text-xl"></i>
                       </div>
                       <div>
-                        <h6 className="font-semibold text-gray-900">Student User</h6>
-                        <p className="text-sm text-gray-500">student@example.com</p>
+                        <h6 className="font-semibold text-gray-900">Aaryan</h6>
+                        <p className="text-sm text-gray-500">aaaryan@gmail.com</p>
                         <span className="inline-block bg-gradient-to-r from-blue-500 to-blue-600 text-white text-xs px-2 py-1 rounded-full mt-1">
                           MBA Candidate
                         </span>

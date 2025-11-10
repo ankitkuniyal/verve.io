@@ -564,8 +564,8 @@ export default function MBAVideoInterview() {
 
   const ScoreBar = ({ score, label }) => (
     <div className="flex items-center gap-4 mb-4">
-      <div className="w-32 text-sm font-medium text-gray-700">{label}</div>
-      <div className="flex-1 bg-gray-200 rounded-full h-4">
+      <div className="w-32 text-sm font-medium text-slate-700">{label}</div>
+      <div className="flex-1 bg-slate-200 rounded-full h-4">
         <div 
           className={`h-4 rounded-full ${
             score >= 90 ? 'bg-green-500' :
@@ -576,61 +576,29 @@ export default function MBAVideoInterview() {
           style={{ width: `${score}%` }}
         />
       </div>
-      <div className="w-12 text-right font-bold text-gray-800">{score}%</div>
+      <div className="w-12 text-right font-bold text-slate-800">{score}%</div>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4">
       <div className="max-w-6xl mx-auto">
 
-        {/* HEADER */}
-        <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl mb-6 overflow-hidden">
-          <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-1">
-            <div className="bg-white p-6 flex justify-between items-center">
-              <div className="flex items-center gap-4">
-                <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-4 rounded-2xl shadow-lg">
-                  <Video className="text-white" size={32} />
-                </div>
-                <div>
-                  <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                    MBA Video Interview
-                  </h1>
-                  <p className="text-gray-600 font-medium">Elite Business School Assessment</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="text-sm text-gray-500 font-medium mb-1">Progress</p>
-                <div className="flex items-center gap-3">
-                  <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-indigo-500 to-purple-600 transition-all duration-500"
-                      style={{ width: `${progressPercent}%` }}
-                    />
-                  </div>
-                  <div className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                    {completedQuestions.length}/{MBA_QUESTIONS.length}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
+        
         {/* MAIN BODY */}
-        <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl overflow-hidden">
+        <div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-slate-100">
           {/* Welcome Screen */}
           {stage === 'welcome' && (
             <div className="p-12 text-center">
               <div className="relative mb-8">
-                <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-purple-600 blur-3xl opacity-20 rounded-full" />
-                <div className="relative bg-gradient-to-br from-indigo-100 to-purple-100 w-32 h-32 rounded-3xl flex items-center justify-center mx-auto shadow-xl">
-                  <Camera className="text-indigo-600" size={64} />
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-indigo-600 blur-3xl opacity-20 rounded-full" />
+                <div className="relative bg-gradient-to-br from-blue-50 to-indigo-50 w-32 h-32 rounded-3xl flex items-center justify-center mx-auto shadow-xl">
+                  <Camera className="text-blue-600" size={64} />
                 </div>
               </div>
 
-              <h2 className="text-4xl font-bold text-gray-800 mb-4">Welcome to Your Interview</h2>
-              <p className="text-gray-600 text-xl mb-8">
+              <h2 className="text-4xl font-bold text-slate-800 mb-4">Welcome to Your Interview</h2>
+              <p className="text-slate-600 text-xl mb-8">
                 Prepare to showcase your potential through {MBA_QUESTIONS.length} carefully designed questions
               </p>
 
@@ -646,7 +614,7 @@ export default function MBAVideoInterview() {
               <button
                 onClick={startCamera}
                 disabled={isLoadingCamera}
-                className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 disabled:from-gray-400 disabled:to-gray-500 text-white px-12 py-5 rounded-2xl font-bold text-xl transition-all transform hover:scale-105 disabled:scale-100 shadow-2xl flex items-center gap-3 mx-auto disabled:cursor-not-allowed"
+                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:from-slate-400 disabled:to-slate-500 text-white px-12 py-5 rounded-2xl font-bold text-xl transition-all transform hover:scale-105 disabled:scale-100 shadow-lg flex items-center gap-3 mx-auto disabled:cursor-not-allowed"
               >
                 {isLoadingCamera ? (
                   <>
@@ -662,7 +630,7 @@ export default function MBAVideoInterview() {
               </button>
 
               {/* Camera Test Instructions */}
-              <div className="mt-8 p-6 bg-blue-50 rounded-2xl max-w-2xl mx-auto text-left">
+              <div className="mt-8 p-6 bg-blue-50 rounded-2xl max-w-2xl mx-auto text-left border border-blue-100">
                 <h3 className="font-bold text-blue-800 mb-2">📹 Camera Setup Tips:</h3>
                 <ul className="text-blue-700 text-sm space-y-1">
                   <li>• Ensure your camera is connected and not being used by other applications</li>
@@ -677,7 +645,7 @@ export default function MBAVideoInterview() {
           {/* Prep or Recording Stage */}
           {(stage === 'preparing' || stage === 'recording') && (
             <div className="p-8 space-y-6">
-              <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 rounded-2xl p-8 text-white shadow-2xl">
+              <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-2xl p-8 text-white shadow-lg">
                 <div className="flex items-center justify-between mb-4">
                   <span className="text-sm font-bold bg-white/30 px-4 py-2 rounded-full">{currentQuestion.category}</span>
                   <span className="text-sm font-bold bg-white/30 px-4 py-2 rounded-full">
@@ -689,7 +657,7 @@ export default function MBAVideoInterview() {
               </div>
 
               {/* ✅ FIXED VIDEO CONTAINER */}
-              <div className="relative bg-black rounded-2xl overflow-hidden shadow-2xl">
+              <div className="relative bg-black rounded-2xl overflow-hidden shadow-lg">
                 {isCameraOn && (
                   <video
                     ref={videoRef}
@@ -721,7 +689,7 @@ export default function MBAVideoInterview() {
                       <p className="text-sm text-gray-300 max-w-md">{cameraError}</p>
                       <button
                         onClick={startCamera}
-                        className="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-xl font-medium"
+                        className="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-xl font-medium"
                       >
                         Retry Camera
                       </button>
@@ -731,7 +699,7 @@ export default function MBAVideoInterview() {
 
                 <div className="absolute top-6 left-6 right-6 flex justify-between items-center">
                   <div
-                    className={`px-6 py-3 rounded-2xl font-bold flex items-center gap-3 shadow-2xl ${
+                    className={`px-6 py-3 rounded-2xl font-bold flex items-center gap-3 shadow-lg ${
                       stage === 'preparing'
                         ? 'bg-yellow-500 text-white'
                         : 'bg-red-600 text-white'
@@ -750,7 +718,7 @@ export default function MBAVideoInterview() {
                     )}
                   </div>
 
-                  <div className="bg-black/80 px-8 py-4 rounded-2xl shadow-2xl">
+                  <div className="bg-black/80 px-8 py-4 rounded-2xl shadow-lg">
                     <div className="text-4xl font-bold text-white tracking-wider">
                       {stage === 'preparing' ? formatTime(prepTimeLeft) : formatTime(recordTimeLeft)}
                     </div>
@@ -763,14 +731,14 @@ export default function MBAVideoInterview() {
                     <>
                       <button
                         onClick={stopRecording}
-                        className="bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-2xl font-bold flex items-center gap-3 shadow-2xl"
+                        className="bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-2xl font-bold flex items-center gap-3 shadow-lg"
                       >
                         <Square size={20} />
                         Stop Recording
                       </button>
                       <button
                         onClick={skipQuestion}
-                        className="bg-gray-800 hover:bg-gray-900 text-white px-6 py-4 rounded-2xl font-bold flex items-center gap-2 shadow-2xl"
+                        className="bg-slate-800 hover:bg-slate-900 text-white px-6 py-4 rounded-2xl font-bold flex items-center gap-2 shadow-lg"
                       >
                         <SkipForward size={20} />
                         Skip
@@ -779,7 +747,7 @@ export default function MBAVideoInterview() {
                   ) : (
                     <button
                       onClick={skipQuestion}
-                      className="bg-gray-800/80 hover:bg-gray-900 text-white px-6 py-3 rounded-2xl font-semibold flex items-center gap-2 shadow-xl"
+                      className="bg-slate-800/80 hover:bg-slate-900 text-white px-6 py-3 rounded-2xl font-semibold flex items-center gap-2 shadow-lg"
                     >
                       <SkipForward size={18} />
                       Skip Question
@@ -790,11 +758,11 @@ export default function MBAVideoInterview() {
 
               {/* ✅ FIXED LIVE TRANSCRIPT SECTION */}
               {stage === 'recording' && (
-                <div className="bg-gradient-to-br from-slate-50 to-blue-50 rounded-2xl p-6 shadow-xl border-2 border-blue-200">
+                <div className="bg-gradient-to-br from-slate-50 to-blue-50 rounded-2xl p-6 shadow-lg border-2 border-blue-200">
                   <div className="flex items-center gap-3 mb-4">
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-                      <span className="font-bold text-gray-700">Live Transcript</span>
+                      <span className="font-bold text-slate-700">Live Transcript</span>
                     </div>
                     {isListening && (
                       <span className="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full font-medium">
@@ -807,13 +775,13 @@ export default function MBAVideoInterview() {
                       </span>
                     )}
                   </div>
-                  <div className="bg-white rounded-xl p-4 min-h-[120px] max-h-[200px] overflow-y-auto shadow-inner">
+                  <div className="bg-white rounded-xl p-4 min-h-[120px] max-h-[200px] overflow-y-auto shadow-inner border border-slate-200">
                     {transcript ? (
-                      <p className="text-gray-800 leading-relaxed">
+                      <p className="text-slate-800 leading-relaxed">
                         {transcript}
                       </p>
                     ) : (
-                      <div className="text-center text-gray-400 italic py-8">
+                      <div className="text-center text-slate-400 italic py-8">
                         {speechRecognitionSupported ? (
                           isListening ? (
                             "Start speaking... Your words will appear here in real-time"
@@ -827,7 +795,7 @@ export default function MBAVideoInterview() {
                     )}
                   </div>
                   {speechRecognitionSupported && (
-                    <div className="mt-3 text-xs text-gray-500">
+                    <div className="mt-3 text-xs text-slate-500">
                       💡 Tip: Speak clearly and at a moderate pace for best transcription results
                     </div>
                   )}
@@ -841,13 +809,13 @@ export default function MBAVideoInterview() {
             <div className="p-12 text-center">
               <div className="relative mb-8">
                 <div className="absolute inset-0 bg-green-400 blur-3xl opacity-30 rounded-full" />
-                <div className="relative bg-gradient-to-br from-green-100 to-emerald-100 w-32 h-32 rounded-3xl flex items-center justify-center mx-auto shadow-xl">
+                <div className="relative bg-gradient-to-br from-green-50 to-emerald-50 w-32 h-32 rounded-3xl flex items-center justify-center mx-auto shadow-xl">
                   <CheckCircle className="text-green-600" size={64} />
                 </div>
               </div>
 
-              <h2 className="text-4xl font-bold text-gray-800 mb-4">Interview Completed 🎉</h2>
-              <p className="text-gray-600 text-xl mb-8">
+              <h2 className="text-4xl font-bold text-slate-800 mb-4">Interview Completed 🎉</h2>
+              <p className="text-slate-600 text-xl mb-8">
                 You've successfully completed all {MBA_QUESTIONS.length} questions!
               </p>
 
@@ -855,7 +823,7 @@ export default function MBAVideoInterview() {
                 <button
                   onClick={generateResults}
                   disabled={isGeneratingResults}
-                  className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-10 py-4 rounded-2xl font-bold text-lg transition-all hover:scale-105 shadow-xl flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-10 py-4 rounded-2xl font-bold text-lg transition-all hover:scale-105 shadow-lg flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isGeneratingResults ? (
                     <>
@@ -872,7 +840,7 @@ export default function MBAVideoInterview() {
 
                 <button
                   onClick={resetInterview}
-                  className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-10 py-4 rounded-2xl font-bold text-lg transition-all hover:scale-105 shadow-xl flex items-center gap-3"
+                  className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-10 py-4 rounded-2xl font-bold text-lg transition-all hover:scale-105 shadow-lg flex items-center gap-3"
                 >
                   <RefreshCw size={24} />
                   Start New Interview
@@ -885,12 +853,12 @@ export default function MBAVideoInterview() {
           {showResults && results && (
             <div className="p-8">
               <div className="text-center mb-8">
-                <h2 className="text-4xl font-bold text-gray-800 mb-2">Interview Analysis Results</h2>
-                <p className="text-gray-600 text-lg">Comprehensive feedback based on your performance</p>
+                <h2 className="text-4xl font-bold text-slate-800 mb-2">Interview Analysis Results</h2>
+                <p className="text-slate-600 text-lg">Comprehensive feedback based on your performance</p>
               </div>
 
               {/* Overall Score */}
-              <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl p-8 text-white text-center mb-8 shadow-2xl">
+              <div className="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-2xl p-8 text-white text-center mb-8 shadow-lg">
                 <div className="text-6xl font-bold mb-2">{results.overallScore}%</div>
                 <div className="text-xl font-medium">Overall Performance Score</div>
                 <div className="text-blue-100 mt-2">
@@ -903,8 +871,8 @@ export default function MBAVideoInterview() {
 
               {/* Detailed Scores */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                <div className="bg-white rounded-2xl p-6 shadow-xl border border-gray-200">
-                  <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <div className="bg-white rounded-2xl p-6 shadow-lg border border-slate-200">
+                  <h3 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
                     <BarChart3 size={20} />
                     Detailed Performance Metrics
                   </h3>
@@ -914,11 +882,11 @@ export default function MBAVideoInterview() {
                   <ScoreBar score={results.nonVerbalCues.score} label="Non-Verbal Cues" />
                 </div>
 
-                <div className="bg-white rounded-2xl p-6 shadow-xl border border-gray-200">
-                  <h3 className="text-xl font-bold text-gray-800 mb-4">🎯 Key Strengths</h3>
+                <div className="bg-white rounded-2xl p-6 shadow-lg border border-slate-200">
+                  <h3 className="text-xl font-bold text-slate-800 mb-4">🎯 Key Strengths</h3>
                   <ul className="space-y-2">
                     {results.keyStrengths.map((strength, index) => (
-                      <li key={index} className="flex items-start gap-2 text-gray-700">
+                      <li key={index} className="flex items-start gap-2 text-slate-700">
                         <CheckCircle size={16} className="text-green-500 mt-1 flex-shrink-0" />
                         <span>{strength}</span>
                       </li>
@@ -929,11 +897,11 @@ export default function MBAVideoInterview() {
 
               {/* Feedback and Recommendations */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                <div className="bg-white rounded-2xl p-6 shadow-xl border border-gray-200">
-                  <h3 className="text-xl font-bold text-gray-800 mb-4">📈 Areas for Improvement</h3>
+                <div className="bg-white rounded-2xl p-6 shadow-lg border border-slate-200">
+                  <h3 className="text-xl font-bold text-slate-800 mb-4">📈 Areas for Improvement</h3>
                   <ul className="space-y-3">
                     {results.areasForImprovement.map((area, index) => (
-                      <li key={index} className="flex items-start gap-2 text-gray-700">
+                      <li key={index} className="flex items-start gap-2 text-slate-700">
                         <div className="w-2 h-2 bg-orange-500 rounded-full mt-2 flex-shrink-0" />
                         <span>{area}</span>
                       </li>
@@ -941,11 +909,11 @@ export default function MBAVideoInterview() {
                   </ul>
                 </div>
 
-                <div className="bg-white rounded-2xl p-6 shadow-xl border border-gray-200">
-                  <h3 className="text-xl font-bold text-gray-800 mb-4">💡 Final Recommendations</h3>
+                <div className="bg-white rounded-2xl p-6 shadow-lg border border-slate-200">
+                  <h3 className="text-xl font-bold text-slate-800 mb-4">💡 Final Recommendations</h3>
                   <ul className="space-y-3">
                     {results.finalRecommendations.map((rec, index) => (
-                      <li key={index} className="flex items-start gap-2 text-gray-700">
+                      <li key={index} className="flex items-start gap-2 text-slate-700">
                         <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0" />
                         <span>{rec}</span>
                       </li>
@@ -955,17 +923,17 @@ export default function MBAVideoInterview() {
               </div>
 
               {/* Category-specific Feedback */}
-              <div className="bg-gradient-to-br from-slate-50 to-blue-50 rounded-2xl p-6 shadow-xl border border-blue-200 mb-8">
-                <h3 className="text-xl font-bold text-gray-800 mb-4">📊 Detailed Feedback by Category</h3>
+              <div className="bg-gradient-to-br from-slate-50 to-blue-50 rounded-2xl p-6 shadow-lg border border-blue-200 mb-8">
+                <h3 className="text-xl font-bold text-slate-800 mb-4">📊 Detailed Feedback by Category</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {Object.entries(results).map(([key, value]) => {
                     if (typeof value === 'object' && value.score && value.feedback) {
                       return (
-                        <div key={key} className="bg-white rounded-xl p-4 shadow-sm">
-                          <h4 className="font-bold text-gray-800 mb-2 capitalize">
+                        <div key={key} className="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
+                          <h4 className="font-bold text-slate-800 mb-2 capitalize">
                             {key.replace(/([A-Z])/g, ' $1').trim()}
                           </h4>
-                          <div className="text-sm text-gray-600 space-y-1">
+                          <div className="text-sm text-slate-600 space-y-1">
                             {value.feedback.map((item, idx) => (
                               <div key={idx} className="flex items-start gap-2">
                                 <div className="w-1 h-1 bg-green-500 rounded-full mt-2 flex-shrink-0" />
@@ -985,14 +953,14 @@ export default function MBAVideoInterview() {
               <div className="flex gap-4 justify-center">
                 <button
                   onClick={downloadResults}
-                  className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-8 py-3 rounded-2xl font-bold flex items-center gap-2 shadow-xl hover:scale-105 transition-all"
+                  className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-3 rounded-2xl font-bold flex items-center gap-2 shadow-lg hover:scale-105 transition-all"
                 >
                   <Download size={20} />
                   Download Results
                 </button>
                 <button
                   onClick={resetInterview}
-                  className="bg-gradient-to-r from-gray-600 to-slate-700 text-white px-8 py-3 rounded-2xl font-bold flex items-center gap-2 shadow-xl hover:scale-105 transition-all"
+                  className="bg-gradient-to-r from-slate-600 to-slate-700 text-white px-8 py-3 rounded-2xl font-bold flex items-center gap-2 shadow-lg hover:scale-105 transition-all"
                 >
                   <RefreshCw size={20} />
                   New Interview
@@ -1002,7 +970,7 @@ export default function MBAVideoInterview() {
           )}
         </div>
 
-        <div className="text-center mt-6 text-white/80 text-sm">
+        <div className="text-center mt-6 text-slate-600 text-sm">
           🔒 Your privacy matters. All recordings are encrypted and reviewed only by authorized staff.
         </div>
       </div>

@@ -11,6 +11,7 @@ import MBAVideoInterview from './components/MBAVideoInterview';
 import LoadingSpinner from './components/ui/LoadingSpinner';
 import ErrorBoundary from './components/ui/ErrorBoundary';
 import AIQuizPlatform from './components/AIQuizPlatform';
+import LearningHub from './components/LearningHub';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -68,6 +69,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Dashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/learning-hub" 
+              element={
+                <ProtectedRoute>
+                  <LearningHub />
                 </ProtectedRoute>
               } 
             />
