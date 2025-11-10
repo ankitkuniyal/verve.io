@@ -26,7 +26,7 @@ export default function PDFTextReader() {
   const [error, setError] = useState("");
   const [sections, setSections] = useState([]);
   const [recommendations, setRecommendations] = useState([]);
-  const [showRecommendations, setShowRecommendations] = useState(false);
+  const [activeTab, setActiveTab] = useState("extracted"); // "extracted" or "recommendations"
   const [uploadStatus, setUploadStatus] = useState("");
   const fileInputRef = useRef(null);
 
@@ -56,7 +56,7 @@ export default function PDFTextReader() {
       setError("");
       setSections([]);
       setRecommendations([]);
-      setShowRecommendations(false);
+      setActiveTab("extracted");
       setUploadStatus("");
     } else {
       setError("Please select a valid PDF file");
@@ -221,7 +221,7 @@ export default function PDFTextReader() {
     setExtracting(true);
     setError("");
     setUploadStatus("");
-    setShowRecommendations(false);
+    setActiveTab("extracted");
 
     try {
       const rawText = await extractTextFromPDF(file);
@@ -244,7 +244,6 @@ export default function PDFTextReader() {
 
       const recs = generateRecommendations(parsedSections);
       setRecommendations(recs);
-      setShowRecommendations(true);
     } catch (err) {
       console.error(err);
       setError("Failed to extract text. Please upload a valid text-based PDF.");
@@ -292,11 +291,11 @@ export default function PDFTextReader() {
           <div className="flex items-center justify-center gap-3 mb-2">
             <BookOpen className="w-10 h-10 text-indigo-600" />
             <h1 className="text-5xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-              Smart PDF Resume Formatter
+              MBA PDF Resume Parser
             </h1>
           </div>
           <p className="text-slate-600 text-lg">
-            Extract and store your resume data directly to Firebase.
+            Extract and store your resume data directly with personal insights.
           </p>
         </div>
 
@@ -367,94 +366,146 @@ export default function PDFTextReader() {
                 </div>
               )}
             </div>
+          </div>
 
-            {/* Recommendations */}
-            {showRecommendations && recommendations.length > 0 && (
-              <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6">
-                <h2 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
-                  <Lightbulb className="w-5 h-5 text-amber-500" /> Resume
-                  Recommendations
-                </h2>
-                <div className="space-y-4">
-                  {recommendations.map((rec) => (
-                    <div
-                      key={rec.id}
-                      className={`p-4 rounded-lg border ${getPriorityColor(
-                        rec.priority
-                      )}`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div
-                          className={`px-2 py-1 rounded text-xs font-medium capitalize ${
-                            rec.priority === "high"
-                              ? "bg-red-100 text-red-800"
-                              : rec.priority === "medium"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : "bg-green-100 text-green-800"
-                          }`}
-                        >
-                          {rec.priority}
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-sm mb-1">
-                            {rec.title}
-                          </h3>
-                          <p className="text-sm opacity-80">
-                            {rec.description}
-                          </p>
-                        </div>
+          {/* Resume Display & Recommendations */}
+          <div className="lg:col-span-2 bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+            {/* Tab Navigation */}
+            {sections.length > 0 && (
+              <div className="border-b border-slate-200">
+                <div className="flex">
+                  <button
+                    onClick={() => setActiveTab("extracted")}
+                    className={`flex-1 py-4 px-6 text-center font-medium transition-all ${
+                      activeTab === "extracted"
+                        ? "bg-indigo-50 text-indigo-700 border-b-2 border-indigo-600"
+                        : "text-slate-600 hover:text-slate-800 hover:bg-slate-50"
+                    }`}
+                  >
+                    <div className="flex items-center justify-center gap-2">
+                      <FileText className="w-4 h-4" />
+                      Summarized Resume
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("recommendations")}
+                    className={`flex-1 py-4 px-6 text-center font-medium transition-all ${
+                      activeTab === "recommendations"
+                        ? "bg-amber-50 text-amber-700 border-b-2 border-amber-500"
+                        : "text-slate-600 hover:text-slate-800 hover:bg-slate-50"
+                    }`}
+                  >
+                    <div className="flex items-center justify-center gap-2">
+                      <Lightbulb className="w-4 h-4" />
+                      Recommendations
+                      {recommendations.length > 0 && (
+                        <span className="bg-amber-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                          {recommendations.length}
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Tab Content */}
+            <div className="p-8 overflow-y-auto max-h-[85vh]">
+              {extracting ? (
+                <div className="text-center py-12">
+                  <Loader2 className="w-12 h-12 text-indigo-600 animate-spin mx-auto mb-4" />
+                  <p className="text-slate-600">
+                    Extracting and saving your resume...
+                  </p>
+                </div>
+              ) : activeTab === "extracted" && sections.length > 0 ? (
+                <div className="space-y-10">
+                  {sections.map((section, i) => (
+                    <div key={i} className="border-b border-slate-200 pb-6">
+                      <div className="flex items-center gap-2 mb-4">
+                        {iconForSection(section.title)}
+                        <h2 className="text-2xl font-semibold text-indigo-700">
+                          {section.title}
+                        </h2>
+                      </div>
+                      <div className="space-y-2 text-slate-700 text-sm leading-relaxed">
+                        {section.content.map((line, idx) =>
+                          line.startsWith("•") ? (
+                            <p
+                              key={idx}
+                              className="ml-4 before:content-['•'] before:mr-2 before:text-indigo-600"
+                            >
+                              {line.replace("•", "").trim()}
+                            </p>
+                          ) : (
+                            <p key={idx}>{line}</p>
+                          )
+                        )}
                       </div>
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
-          </div>
-
-          {/* Resume Display */}
-          <div className="lg:col-span-2 bg-white rounded-2xl shadow-xl border border-slate-200 p-8 overflow-y-auto max-h-[85vh]">
-            {extracting ? (
-              <div className="text-center py-12">
-                <Loader2 className="w-12 h-12 text-indigo-600 animate-spin mx-auto mb-4" />
-                <p className="text-slate-600">
-                  Extracting and saving your resume...
-                </p>
-              </div>
-            ) : sections.length > 0 ? (
-              <div className="space-y-10">
-                {sections.map((section, i) => (
-                  <div key={i} className="border-b border-slate-200 pb-6">
-                    <div className="flex items-center gap-2 mb-4">
-                      {iconForSection(section.title)}
-                      <h2 className="text-2xl font-semibold text-indigo-700">
-                        {section.title}
-                      </h2>
-                    </div>
-                    <div className="space-y-2 text-slate-700 text-sm leading-relaxed">
-                      {section.content.map((line, idx) =>
-                        line.startsWith("•") ? (
-                          <p
-                            key={idx}
-                            className="ml-4 before:content-['•'] before:mr-2 before:text-indigo-600"
-                          >
-                            {line.replace("•", "").trim()}
-                          </p>
-                        ) : (
-                          <p key={idx}>{line}</p>
-                        )
-                      )}
-                    </div>
+              ) : activeTab === "recommendations" && recommendations.length > 0 ? (
+                <div className="space-y-6">
+                  <div className="text-center mb-6">
+                    <Lightbulb className="w-12 h-12 text-amber-500 mx-auto mb-3" />
+                    <h2 className="text-2xl font-semibold text-slate-800">
+                      Resume Recommendations
+                    </h2>
+                    <p className="text-slate-600 mt-2">
+                      Suggestions to improve your resume based on our analysis
+                    </p>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <FileText className="w-16 h-16 text-slate-300 mx-auto mb-3" />
-                <p className="text-slate-600">
-                  Upload your PDF to extract and store data.
-                </p>
-              </div>
-            )}
+                  
+                  <div className="space-y-4">
+                    {recommendations.map((rec) => (
+                      <div
+                        key={rec.id}
+                        className={`p-4 rounded-lg border ${getPriorityColor(
+                          rec.priority
+                        )}`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div
+                            className={`px-2 py-1 rounded text-xs font-medium capitalize ${
+                              rec.priority === "high"
+                                ? "bg-red-100 text-red-800"
+                                : rec.priority === "medium"
+                                ? "bg-yellow-100 text-yellow-800"
+                                : "bg-green-100 text-green-800"
+                            }`}
+                          >
+                            {rec.priority}
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-sm mb-1">
+                              {rec.title}
+                            </h3>
+                            <p className="text-sm opacity-80">
+                              {rec.description}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : sections.length === 0 ? (
+                <div className="text-center py-12">
+                  <FileText className="w-16 h-16 text-slate-300 mx-auto mb-3" />
+                  <p className="text-slate-600">
+                    Upload your PDF to extract and store data.
+                  </p>
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <Lightbulb className="w-16 h-16 text-slate-300 mx-auto mb-3" />
+                  <p className="text-slate-600">
+                    No recommendations available at the moment.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

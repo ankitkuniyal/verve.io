@@ -1,18 +1,19 @@
 // src/hooks/useAuth.js
-import { useState, useEffect } from 'react';
-import { 
+import { useState, useEffect } from "react";
+import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
-  updateProfile
-} from 'firebase/auth';
-import { auth } from '../firebase/config';
+  updateProfile,
+} from "firebase/auth";
+import { auth } from "../firebase/config";
 
 export const useAuth = () => {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [authLoading, setAuthLoading] = useState(true); // Renamed to avoid conflicts
+  const [actionLoading, setActionLoading] = useState(false); // Separate loading for actions
+  const [error, setError] = useState("");
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -21,41 +22,49 @@ export const useAuth = () => {
           uid: user.uid,
           email: user.email,
           displayName: user.displayName,
-          emailVerified: user.emailVerified
+          emailVerified: user.emailVerified,
         });
       } else {
         setUser(null);
       }
-      setLoading(false);
+      setAuthLoading(false); // This should only control auth state checking
     });
 
     return () => unsubscribe();
   }, []);
 
   const login = async (email, password) => {
-    setLoading(true);
-    setError('');
+    setActionLoading(true);
+    setError("");
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
       return userCredential;
     } catch (error) {
       setError(getAuthErrorMessage(error.code));
       throw error;
     } finally {
-      setLoading(false);
+      setActionLoading(false);
     }
   };
 
   const register = async (email, password, displayName) => {
-    setLoading(true);
-    setError('');
+    setActionLoading(true);
+    setError("");
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+
       // Update profile with display name
       if (displayName) {
         await updateProfile(userCredential.user, {
-          displayName: displayName
+          displayName: displayName,
         });
       }
 
@@ -64,52 +73,57 @@ export const useAuth = () => {
       setError(getAuthErrorMessage(error.code));
       throw error;
     } finally {
-      setLoading(false);
+      setActionLoading(false);
     }
   };
 
   const logout = async () => {
     try {
+      setActionLoading(true);
       await signOut(auth);
+      // Note: onAuthStateChanged will automatically update the user state to null
     } catch (error) {
       setError(getAuthErrorMessage(error.code));
       throw error;
+    } finally {
+      setActionLoading(false);
     }
   };
 
-  const clearError = () => setError('');
+  const clearError = () => setError("");
 
   return {
     user,
-    loading,
+    loading: authLoading, // Only use authLoading for the main loading state
+    actionLoading, // Separate loading for login/register/logout actions
     error,
     login,
     register,
     logout,
-    clearError
+    clearError,
   };
 };
 
 // Helper function to convert Firebase error codes to user-friendly messages
 const getAuthErrorMessage = (errorCode) => {
   switch (errorCode) {
-    case 'auth/invalid-email':
-      return 'Invalid email address.';
-    case 'auth/user-disabled':
-      return 'This account has been disabled.';
-    case 'auth/user-not-found':
-      return 'No account found with this email.';
-    case 'auth/wrong-password':
-      return 'Incorrect password.';
-    case 'auth/email-already-in-use':
-      return 'An account with this email already exists.';
-    case 'auth/weak-password':
-      return 'Password should be at least 6 characters.';
-    case 'auth/network-request-failed':
-      return 'Network error. Please check your connection.';
-    case 'auth/too-many-requests':
-      return 'Too many attempts. Please try again later.';
+    case "auth/invalid-email":
+      return "Invalid email address.";
+    case "auth/user-disabled":
+      return "This account has been disabled.";
+    case "auth/user-not-found":
+      return "No account found with this email.";
+    case "auth/wrong-password":
+      return "Incorrect password.";
+    case "auth/email-already-in-use":
+      return "An account with this email already exists.";
+    case "auth/weak-password":
+      return "Password should be at least 6 characters.";
+    case "auth/network-request-failed":
+      return "Network error. Please check your connection.";
+    case "auth/too-many-requests":
+      return "Too many attempts. Please try again later.";
     default:
-      return 'An error occurred. Please try again.';
+      return "An error occurred. Please try again.";
   }
 };
