@@ -97,7 +97,7 @@ const EssayWritingPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-8 px-4 sm:px-6 lg:px-8">
+    <div className="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen  px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
         {/* Add this Back to Dashboard button */}
     <div className="flex justify-end mb-6">
@@ -125,14 +125,14 @@ const EssayWritingPage = () => {
               
 
               {/* Topic Card */}
-              <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-2xl p-4 border-l-4 border-blue-500 mb-4">
+              <div className="bg-gradient-to-r from-yellow-50 to-amber-100 rounded-2xl p-4 border-l-4 border-yellow-400 mb-4">
                 <div className="flex items-center">
-                  <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center mr-3">
+                  <div className="w-10 h-10 bg-yellow-400 rounded-full flex items-center justify-center mr-3">
                     <i className="fas fa-lightbulb text-white"></i>
                   </div>
                   <div>
-                    <span className="font-semibold text-blue-900 text-sm">Current Topic:</span>
-                    <p className="text-blue-800 font-medium">{topic}</p>
+                    <span className="font-semibold text-yellow-900 text-sm">Current Topic:</span>
+                    <p className="text-yellow-800 font-medium">{topic}</p>
                   </div>
                 </div>
               </div>

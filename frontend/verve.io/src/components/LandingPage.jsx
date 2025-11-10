@@ -592,7 +592,7 @@ const LandingPage = () => {
           <div className="mt-20 py-16">
             <div className="max-w-7xl mx-auto">
               <h2 className="text-5xl font-bold text-gray-900 mb-4 text-center">
-                Why Choose InterviewAI?
+                Why choose verve.io?
               </h2>
               <p className="text-xl text-gray-600 mb-12 text-center max-w-3xl mx-auto">
                 Join thousands of successful MBA candidates who transformed their interview skills with our platform

@@ -581,7 +581,7 @@ export default function MBAVideoInterview() {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4">
+    <div className="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen py-8">
       <div className="max-w-7xl mx-auto">
         
         {/* Back to Dashboard button */}

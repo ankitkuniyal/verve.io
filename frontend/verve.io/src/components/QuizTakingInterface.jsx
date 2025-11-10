@@ -84,7 +84,9 @@ const QuizTakingInterface = ({ quizData, userAnswers, onAnswersUpdate, onSubmit,
   };
 
   return (
-    <div className="max-w-7xl mx-auto">
+    <div className="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen py-8">
+
+      <div className="max-w-7xl mx-auto">
       {/* Quiz Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6 p-6 bg-white rounded-2xl shadow-lg border">
         <div className="flex-1">
@@ -299,6 +301,7 @@ const QuizTakingInterface = ({ quizData, userAnswers, onAnswersUpdate, onSubmit,
           </div>
         </div>
       )}
+    </div>
     </div>
   );
 };

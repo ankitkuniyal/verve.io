@@ -288,7 +288,7 @@ const AIQuizPlatform = () => {
     const { percentile = 0, benchmark = '' } = comparativeAnalysis;
 
     return (
-      <div className="min-h-screen flex justify-center items-center bg-gradient-to-br from-blue-100 to-cyan-50 py-8">
+      <div className="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen  flex justify-center items-center">
         <div className="max-w-3xl w-full mx-auto bg-white shadow-2xl rounded-2xl p-8 border border-blue-200">
           {/* Header */}
           <div className="mb-6">

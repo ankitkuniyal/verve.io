@@ -227,7 +227,7 @@ export default function PDFTextReader() {
   };
 
   return (
-    <section className="bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen py-8">
+    <section className="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen py-8">
       <div className="max-w-7xl mx-auto px-6">
         {/* Header */}
         <div className="mb-10">
