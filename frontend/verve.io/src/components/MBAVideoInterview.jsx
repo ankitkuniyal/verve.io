@@ -1,0 +1,1011 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { Camera, Video, Clock, CheckCircle, Play, Square, SkipForward, RefreshCw, BarChart3, Download } from 'lucide-react';
+
+const MBA_QUESTIONS = [
+  {
+    id: 1,
+    question: "Tell us about yourself and why you're interested in pursuing an MBA at this time in your career.",
+    category: "Introduction",
+    tips: "Focus on your professional journey and clear motivations"
+  },
+  {
+    id: 2,
+    question: "Describe a time when you demonstrated leadership in a challenging situation. What was the outcome?",
+    category: "Leadership",
+    tips: "Use the STAR method: Situation, Task, Action, Result"
+  },
+  {
+    id: 3,
+    question: "What are your short-term and long-term career goals, and how will an MBA help you achieve them?",
+    category: "Career Goals",
+    tips: "Be specific about timelines and how the MBA bridges gaps"
+  },
+  {
+    id: 4,
+    question: "Tell us about a time you failed. What did you learn from that experience?",
+    category: "Self-Awareness",
+    tips: "Show vulnerability and growth mindset"
+  },
+  {
+    id: 5,
+    question: "How do you handle conflicts in team settings? Provide a specific example.",
+    category: "Teamwork",
+    tips: "Demonstrate emotional intelligence and problem-solving"
+  },
+  {
+    id: 6,
+    question: "What unique perspective or experience will you bring to our MBA program?",
+    category: "Diversity & Fit",
+    tips: "Highlight what makes you different and valuable"
+  }
+];
+
+// Mock analysis results based on common interview performance patterns
+const GENERATE_RESULTS = () => ({
+  overallScore: Math.floor(Math.random() * 30) + 70, // 70-100
+  verbalCommunication: {
+    score: Math.floor(Math.random() * 25) + 75,
+    feedback: [
+      "Clear and articulate speech patterns detected",
+      "Good use of professional vocabulary",
+      "Well-structured responses with logical flow",
+      "Appropriate pacing and minimal filler words"
+    ],
+    recommendations: [
+      "Practice varying tone to emphasize key points",
+      "Incorporate more industry-specific terminology",
+      "Work on reducing occasional repetition"
+    ]
+  },
+  confidence: {
+    score: Math.floor(Math.random() * 25) + 70,
+    feedback: [
+      "Demonstrated strong self-assurance in responses",
+      "Maintained composure throughout challenging questions",
+      "Assertive yet respectful communication style",
+      "Good eye contact and posture maintained"
+    ],
+    recommendations: [
+      "Practice speaking with more vocal variety",
+      "Incorporate more specific data to support claims",
+      "Work on projecting even more authority in leadership examples"
+    ]
+  },
+  contentQuality: {
+    score: Math.floor(Math.random() * 30) + 70,
+    feedback: [
+      "Strong use of STAR method in behavioral questions",
+      "Clear connection between experience and MBA goals",
+      "Good examples of leadership and teamwork",
+      "Demonstrated self-awareness in failure discussion"
+    ],
+    recommendations: [
+      "Include more quantifiable achievements in examples",
+      "Strengthen connection between past experience and future goals",
+      "Add more specific program-specific insights"
+    ]
+  },
+  nonVerbalCues: {
+    score: Math.floor(Math.random() * 20) + 75,
+    feedback: [
+      "Professional appearance and demeanor",
+      "Good facial expressions showing engagement",
+      "Appropriate gestures to emphasize points",
+      "Consistent eye contact with camera"
+    ],
+    recommendations: [
+      "Practice more natural smiling to build rapport",
+      "Use slightly more hand gestures for emphasis",
+      "Ensure consistent lighting for better video quality"
+    ]
+  },
+  keyStrengths: [
+    "Strong leadership examples with measurable outcomes",
+    "Clear career vision and MBA rationale",
+    "Excellent communication skills and articulation",
+    "Good emotional intelligence in team scenarios",
+    "Professional presence and demeanor"
+  ],
+  areasForImprovement: [
+    "Incorporate more data-driven examples",
+    "Strengthen program-specific knowledge",
+    "Enhance storytelling in personal examples",
+    "Increase specificity in goal-setting"
+  ],
+  finalRecommendations: [
+    "Continue practicing with mock interviews monthly",
+    "Research specific MBA program offerings more deeply",
+    "Develop 3-5 quantifiable achievement stories",
+    "Join public speaking groups for additional practice",
+    "Schedule informational interviews with current students"
+  ]
+});
+
+export default function MBAVideoInterview() {
+  const [stage, setStage] = useState('welcome');
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [prepTimeLeft, setPrepTimeLeft] = useState(30);
+  const [recordTimeLeft, setRecordTimeLeft] = useState(60);
+  const [isRecording, setIsRecording] = useState(false);
+  const [completedQuestions, setCompletedQuestions] = useState([]);
+  const [isCameraOn, setIsCameraOn] = useState(false);
+  const [cameraError, setCameraError] = useState('');
+  const [mediaRecorder, setMediaRecorder] = useState(null);
+  const [isLoadingCamera, setIsLoadingCamera] = useState(false);
+  const [transcript, setTranscript] = useState('');
+  const [isListening, setIsListening] = useState(false);
+  const [speechRecognitionSupported, setSpeechRecognitionSupported] = useState(true);
+  const [showResults, setShowResults] = useState(false);
+  const [results, setResults] = useState(null);
+  const [isGeneratingResults, setIsGeneratingResults] = useState(false);
+
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+  const prepTimerRef = useRef(null);
+  const recordTimerRef = useRef(null);
+  const recognitionRef = useRef(null);
+  const transcriptRef = useRef('');
+
+  const currentQuestion = MBA_QUESTIONS[currentQuestionIndex];
+
+  // ✅ FIXED SPEECH RECOGNITION SETUP
+  useEffect(() => {
+    // Check if browser supports speech recognition
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    
+    if (!SpeechRecognition) {
+      console.warn('Speech recognition not supported in this browser');
+      setSpeechRecognitionSupported(false);
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+
+    recognition.onstart = () => {
+      console.log('🎤 Speech recognition started');
+      setIsListening(true);
+    };
+
+    recognition.onresult = (event) => {
+      let interimTranscript = '';
+      
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcriptPart = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          // Append final transcript with proper spacing
+          transcriptRef.current += transcriptPart + ' ';
+        } else {
+          interimTranscript += transcriptPart;
+        }
+      }
+
+      // Update state with both final and interim transcripts
+      setTranscript(transcriptRef.current + interimTranscript);
+    };
+
+    recognition.onerror = (event) => {
+      console.error('Speech recognition error:', event.error);
+      
+      // Don't stop on common non-fatal errors
+      if (event.error === 'no-speech' || event.error === 'audio-capture') {
+        console.log('No speech detected, continuing to listen...');
+        return;
+      }
+      
+      // For more serious errors, stop recognition
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+        setIsListening(false);
+      }
+    };
+
+    recognition.onend = () => {
+      console.log('🎤 Speech recognition ended');
+      setIsListening(false);
+      
+      // Auto-restart if we're still in recording mode
+      if (stage === 'recording' && !isListening) {
+        console.log('🔄 Auto-restarting speech recognition');
+        setTimeout(() => {
+          if (recognitionRef.current && stage === 'recording') {
+            try {
+              recognitionRef.current.start();
+            } catch (err) {
+              console.error('Failed to restart speech recognition:', err);
+            }
+          }
+        }, 500);
+      }
+    };
+
+    recognitionRef.current = recognition;
+
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
+  }, []);
+
+  // ✅ FIXED: Start/stop speech recognition based on recording state
+  useEffect(() => {
+    if (!recognitionRef.current || !speechRecognitionSupported) return;
+
+    if (stage === 'recording' && !isListening) {
+      console.log('🚀 Starting speech recognition for recording');
+      transcriptRef.current = ''; // Reset transcript for new question
+      setTranscript('');
+      
+      setTimeout(() => {
+        try {
+          recognitionRef.current.start();
+        } catch (err) {
+          console.error('Failed to start speech recognition:', err);
+          setSpeechRecognitionSupported(false);
+        }
+      }, 1000);
+    } else if (stage !== 'recording' && isListening) {
+      console.log('🛑 Stopping speech recognition');
+      recognitionRef.current.stop();
+    }
+  }, [stage, isListening, speechRecognitionSupported]);
+
+  // ✅ FIXED: Reset transcript when moving to new question
+  useEffect(() => {
+    if (stage === 'preparing') {
+      transcriptRef.current = '';
+      setTranscript('');
+    }
+  }, [currentQuestionIndex, stage]);
+
+  // ✅ FIXED CAMERA INITIALIZATION
+  const startCamera = async () => {
+    setIsLoadingCamera(true);
+    setCameraError('');
+
+    try {
+      // Stop any existing stream first
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+
+      // Request camera and microphone
+      const constraints = {
+        video: {
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          facingMode: 'user'
+        },
+        audio: true
+      };
+
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      streamRef.current = stream;
+
+      // Set state first to ensure video element is rendered
+      setIsCameraOn(true);
+      setStage('preparing');
+      
+      // Wait for next render cycle
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Now attach stream to video element
+      if (videoRef.current && streamRef.current) {
+        videoRef.current.srcObject = streamRef.current;
+        videoRef.current.muted = true;
+        
+        // Wait for video to load
+        await new Promise((resolve, reject) => {
+          if (!videoRef.current) return reject(new Error('Video element not found'));
+          
+          const timeout = setTimeout(() => reject(new Error('Video load timeout')), 5000);
+          
+          videoRef.current.onloadedmetadata = () => {
+            clearTimeout(timeout);
+            resolve();
+          };
+          
+          videoRef.current.onerror = (e) => {
+            clearTimeout(timeout);
+            reject(new Error('Video element error'));
+          };
+        });
+
+        // Play video
+        try {
+          await videoRef.current.play();
+          console.log('✅ Camera started successfully');
+        } catch (playError) {
+          console.warn('Play error (trying muted):', playError);
+          videoRef.current.muted = true;
+          await videoRef.current.play();
+        }
+      }
+
+      setIsLoadingCamera(false);
+      
+      // Start preparation timer
+      startPrepTimer();
+
+    } catch (err) {
+      console.error('❌ Camera initialization failed:', err);
+      setIsLoadingCamera(false);
+      setStage('welcome');
+      setIsCameraOn(false);
+      
+      let errorMessage = '❌ Unable to access your camera. ';
+      
+      if (err.name === 'NotAllowedError') {
+        errorMessage += 'Please allow camera and microphone permissions and try again.';
+      } else if (err.name === 'NotFoundError') {
+        errorMessage += 'No camera found. Please check your device.';
+      } else if (err.name === 'NotReadableError') {
+        errorMessage += 'Camera is already in use by another application.';
+      } else if (err.name === 'OverconstrainedError') {
+        errorMessage += 'Camera does not support the required settings.';
+      } else {
+        errorMessage += err.message || 'Please check your camera and try again.';
+      }
+      
+      setCameraError(errorMessage);
+      
+      // Clean up on error
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+    }
+  };
+
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    setIsCameraOn(false);
+    setIsLoadingCamera(false);
+  };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (prepTimerRef.current) clearInterval(prepTimerRef.current);
+      if (recordTimerRef.current) clearInterval(recordTimerRef.current);
+      stopCamera();
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
+  }, []);
+
+  // Prep timer
+  const startPrepTimer = () => {
+    setPrepTimeLeft(30);
+    if (prepTimerRef.current) clearInterval(prepTimerRef.current);
+
+    prepTimerRef.current = setInterval(() => {
+      setPrepTimeLeft(prev => {
+        if (prev <= 1) {
+          clearInterval(prepTimerRef.current);
+          setTimeout(() => startRecording(), 500);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  // Recording start
+  const startRecording = () => {
+    if (!streamRef.current) {
+      console.error('No stream available for recording');
+      return;
+    }
+
+    try {
+      const mimeType = MediaRecorder.isTypeSupported('video/webm; codecs=vp9') 
+        ? 'video/webm; codecs=vp9'
+        : MediaRecorder.isTypeSupported('video/webm; codecs=vp8') 
+        ? 'video/webm; codecs=vp8'
+        : 'video/webm';
+
+      const recorder = new MediaRecorder(streamRef.current, { 
+        mimeType,
+        videoBitsPerSecond: 2500000
+      });
+      
+      const recordedChunks = [];
+      
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          recordedChunks.push(e.data);
+          console.log('Recording chunk:', e.data.size, 'bytes');
+        }
+      };
+
+      recorder.onstop = () => {
+        const blob = new Blob(recordedChunks, { type: mimeType });
+        console.log('Recording completed. Total size:', blob.size, 'bytes');
+        // Here you would upload or save the blob
+      };
+
+      recorder.onerror = (e) => {
+        console.error('Recording error:', e);
+        alert('Recording failed. Please try again.');
+      };
+
+      recorder.start(1000);
+      setMediaRecorder(recorder);
+      setIsRecording(true);
+      setStage('recording');
+      setRecordTimeLeft(60);
+
+      if (recordTimerRef.current) clearInterval(recordTimerRef.current);
+      recordTimerRef.current = setInterval(() => {
+        setRecordTimeLeft(prev => {
+          if (prev <= 1) {
+            stopRecording();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } catch (err) {
+      console.error('Recording setup failed:', err);
+      alert('Recording failed to start. Please check your device permissions.');
+    }
+  };
+
+  const stopRecording = () => {
+    if (recordTimerRef.current) {
+      clearInterval(recordTimerRef.current);
+      recordTimerRef.current = null;
+    }
+
+    // Stop speech recognition
+    if (recognitionRef.current && isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    }
+
+    if (mediaRecorder && isRecording) {
+      mediaRecorder.stop();
+      setIsRecording(false);
+      setCompletedQuestions(prev => [...prev, currentQuestion.id]);
+
+      setTimeout(() => {
+        if (currentQuestionIndex < MBA_QUESTIONS.length - 1) {
+          setCurrentQuestionIndex(prev => prev + 1);
+          setStage('preparing');
+          setTranscript(''); // Clear transcript for next question
+          startPrepTimer();
+        } else {
+          setStage('completed');
+          stopCamera();
+        }
+      }, 1000);
+    }
+  };
+
+  const skipQuestion = () => {
+    if (prepTimerRef.current) clearInterval(prepTimerRef.current);
+    if (recordTimerRef.current) clearInterval(recordTimerRef.current);
+    
+    // Stop speech recognition
+    if (recognitionRef.current && isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    }
+    
+    if (mediaRecorder && isRecording) {
+      mediaRecorder.stop();
+      setIsRecording(false);
+    }
+
+    setCompletedQuestions(prev => [...prev, currentQuestion.id]);
+
+    if (currentQuestionIndex < MBA_QUESTIONS.length - 1) {
+      setCurrentQuestionIndex(prev => prev + 1);
+      setStage('preparing');
+      setTranscript(''); // Clear transcript for next question
+      startPrepTimer();
+    } else {
+      setStage('completed');
+      stopCamera();
+    }
+  };
+
+  const generateResults = () => {
+    setIsGeneratingResults(true);
+    
+    // Simulate analysis processing time
+    setTimeout(() => {
+      const analysisResults = GENERATE_RESULTS();
+      setResults(analysisResults);
+      setShowResults(true);
+      setIsGeneratingResults(false);
+    }, 2000);
+  };
+
+  const resetInterview = () => {
+    setStage('welcome');
+    setCurrentQuestionIndex(0);
+    setCompletedQuestions([]);
+    setShowResults(false);
+    setResults(null);
+    setTranscript('');
+    transcriptRef.current = '';
+  };
+
+  const downloadResults = () => {
+    const element = document.createElement("a");
+    const file = new Blob([JSON.stringify(results, null, 2)], { type: 'application/json' });
+    element.href = URL.createObjectURL(file);
+    element.download = "mba-interview-results.json";
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+  };
+
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const progressPercent = (completedQuestions.length / MBA_QUESTIONS.length) * 100;
+
+  const ScoreBar = ({ score, label }) => (
+    <div className="flex items-center gap-4 mb-4">
+      <div className="w-32 text-sm font-medium text-gray-700">{label}</div>
+      <div className="flex-1 bg-gray-200 rounded-full h-4">
+        <div 
+          className={`h-4 rounded-full ${
+            score >= 90 ? 'bg-green-500' :
+            score >= 80 ? 'bg-green-400' :
+            score >= 70 ? 'bg-yellow-500' :
+            score >= 60 ? 'bg-orange-500' : 'bg-red-500'
+          }`}
+          style={{ width: `${score}%` }}
+        />
+      </div>
+      <div className="w-12 text-right font-bold text-gray-800">{score}%</div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 p-4">
+      <div className="max-w-6xl mx-auto">
+
+        {/* HEADER */}
+        <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl mb-6 overflow-hidden">
+          <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-1">
+            <div className="bg-white p-6 flex justify-between items-center">
+              <div className="flex items-center gap-4">
+                <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-4 rounded-2xl shadow-lg">
+                  <Video className="text-white" size={32} />
+                </div>
+                <div>
+                  <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                    MBA Video Interview
+                  </h1>
+                  <p className="text-gray-600 font-medium">Elite Business School Assessment</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-sm text-gray-500 font-medium mb-1">Progress</p>
+                <div className="flex items-center gap-3">
+                  <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-indigo-500 to-purple-600 transition-all duration-500"
+                      style={{ width: `${progressPercent}%` }}
+                    />
+                  </div>
+                  <div className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                    {completedQuestions.length}/{MBA_QUESTIONS.length}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* MAIN BODY */}
+        <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl overflow-hidden">
+          {/* Welcome Screen */}
+          {stage === 'welcome' && (
+            <div className="p-12 text-center">
+              <div className="relative mb-8">
+                <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-purple-600 blur-3xl opacity-20 rounded-full" />
+                <div className="relative bg-gradient-to-br from-indigo-100 to-purple-100 w-32 h-32 rounded-3xl flex items-center justify-center mx-auto shadow-xl">
+                  <Camera className="text-indigo-600" size={64} />
+                </div>
+              </div>
+
+              <h2 className="text-4xl font-bold text-gray-800 mb-4">Welcome to Your Interview</h2>
+              <p className="text-gray-600 text-xl mb-8">
+                Prepare to showcase your potential through {MBA_QUESTIONS.length} carefully designed questions
+              </p>
+
+              {cameraError && (
+                <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-xl mb-6 text-left max-w-2xl mx-auto">
+                  <p className="text-red-800 font-medium">{cameraError}</p>
+                  <p className="text-red-600 text-sm mt-2">
+                    Tips: Ensure no other app is using your camera, check browser permissions, and try refreshing the page.
+                  </p>
+                </div>
+              )}
+
+              <button
+                onClick={startCamera}
+                disabled={isLoadingCamera}
+                className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 disabled:from-gray-400 disabled:to-gray-500 text-white px-12 py-5 rounded-2xl font-bold text-xl transition-all transform hover:scale-105 disabled:scale-100 shadow-2xl flex items-center gap-3 mx-auto disabled:cursor-not-allowed"
+              >
+                {isLoadingCamera ? (
+                  <>
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+                    Initializing Camera...
+                  </>
+                ) : (
+                  <>
+                    <Play size={24} />
+                    Begin Interview
+                  </>
+                )}
+              </button>
+
+              {/* Camera Test Instructions */}
+              <div className="mt-8 p-6 bg-blue-50 rounded-2xl max-w-2xl mx-auto text-left">
+                <h3 className="font-bold text-blue-800 mb-2">📹 Camera Setup Tips:</h3>
+                <ul className="text-blue-700 text-sm space-y-1">
+                  <li>• Ensure your camera is connected and not being used by other applications</li>
+                  <li>• Grant camera and microphone permissions when the browser prompts you</li>
+                  <li>• Use Chrome, Firefox, or Edge for best compatibility</li>
+                  <li>• Make sure you're on HTTPS (required for camera access)</li>
+                </ul>
+              </div>
+            </div>
+          )}
+
+          {/* Prep or Recording Stage */}
+          {(stage === 'preparing' || stage === 'recording') && (
+            <div className="p-8 space-y-6">
+              <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 rounded-2xl p-8 text-white shadow-2xl">
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-sm font-bold bg-white/30 px-4 py-2 rounded-full">{currentQuestion.category}</span>
+                  <span className="text-sm font-bold bg-white/30 px-4 py-2 rounded-full">
+                    Question {currentQuestionIndex + 1} of {MBA_QUESTIONS.length}
+                  </span>
+                </div>
+                <h3 className="text-3xl font-bold mb-4">{currentQuestion.question}</h3>
+                <p className="text-white/80 text-sm italic">💡 {currentQuestion.tips}</p>
+              </div>
+
+              {/* ✅ FIXED VIDEO CONTAINER */}
+              <div className="relative bg-black rounded-2xl overflow-hidden shadow-2xl">
+                {isCameraOn && (
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="w-full h-[500px] object-cover bg-black rounded-2xl"
+                    style={{ transform: 'scaleX(-1)' }}
+                  />
+                )}
+
+                {/* Loading overlay */}
+                {!isCameraOn && !cameraError && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black h-[500px]">
+                    <div className="text-white text-center">
+                      <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-white mx-auto mb-4"></div>
+                      <p className="text-xl">Initializing camera...</p>
+                      <p className="text-sm text-gray-300 mt-2">Please allow camera permissions if prompted</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Camera error overlay */}
+                {cameraError && stage !== 'welcome' && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black h-[500px]">
+                    <div className="text-white text-center p-6">
+                      <Camera size={64} className="mx-auto mb-4 opacity-50" />
+                      <p className="text-xl text-red-300 mb-2">Camera Error</p>
+                      <p className="text-sm text-gray-300 max-w-md">{cameraError}</p>
+                      <button
+                        onClick={startCamera}
+                        className="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-xl font-medium"
+                      >
+                        Retry Camera
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="absolute top-6 left-6 right-6 flex justify-between items-center">
+                  <div
+                    className={`px-6 py-3 rounded-2xl font-bold flex items-center gap-3 shadow-2xl ${
+                      stage === 'preparing'
+                        ? 'bg-yellow-500 text-white'
+                        : 'bg-red-600 text-white'
+                    }`}
+                  >
+                    {stage === 'preparing' ? (
+                      <>
+                        <Clock size={24} className="animate-pulse" />
+                        <span className="text-lg">Preparation Time</span>
+                      </>
+                    ) : (
+                      <>
+                        <div className="w-3 h-3 bg-white rounded-full animate-pulse" />
+                        <span className="text-lg">RECORDING</span>
+                      </>
+                    )}
+                  </div>
+
+                  <div className="bg-black/80 px-8 py-4 rounded-2xl shadow-2xl">
+                    <div className="text-4xl font-bold text-white tracking-wider">
+                      {stage === 'preparing' ? formatTime(prepTimeLeft) : formatTime(recordTimeLeft)}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bottom Buttons */}
+                <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex gap-4">
+                  {stage === 'recording' ? (
+                    <>
+                      <button
+                        onClick={stopRecording}
+                        className="bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-2xl font-bold flex items-center gap-3 shadow-2xl"
+                      >
+                        <Square size={20} />
+                        Stop Recording
+                      </button>
+                      <button
+                        onClick={skipQuestion}
+                        className="bg-gray-800 hover:bg-gray-900 text-white px-6 py-4 rounded-2xl font-bold flex items-center gap-2 shadow-2xl"
+                      >
+                        <SkipForward size={20} />
+                        Skip
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={skipQuestion}
+                      className="bg-gray-800/80 hover:bg-gray-900 text-white px-6 py-3 rounded-2xl font-semibold flex items-center gap-2 shadow-xl"
+                    >
+                      <SkipForward size={18} />
+                      Skip Question
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* ✅ FIXED LIVE TRANSCRIPT SECTION */}
+              {stage === 'recording' && (
+                <div className="bg-gradient-to-br from-slate-50 to-blue-50 rounded-2xl p-6 shadow-xl border-2 border-blue-200">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+                      <span className="font-bold text-gray-700">Live Transcript</span>
+                    </div>
+                    {isListening && (
+                      <span className="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full font-medium">
+                        🎤 Listening...
+                      </span>
+                    )}
+                    {!speechRecognitionSupported && (
+                      <span className="text-xs bg-amber-100 text-amber-700 px-3 py-1 rounded-full font-medium">
+                        ⚠️ Speech recognition not supported
+                      </span>
+                    )}
+                  </div>
+                  <div className="bg-white rounded-xl p-4 min-h-[120px] max-h-[200px] overflow-y-auto shadow-inner">
+                    {transcript ? (
+                      <p className="text-gray-800 leading-relaxed">
+                        {transcript}
+                      </p>
+                    ) : (
+                      <div className="text-center text-gray-400 italic py-8">
+                        {speechRecognitionSupported ? (
+                          isListening ? (
+                            "Start speaking... Your words will appear here in real-time"
+                          ) : (
+                            "Initializing speech recognition..."
+                          )
+                        ) : (
+                          "Speech recognition is not supported in your browser. Try Chrome or Edge."
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {speechRecognitionSupported && (
+                    <div className="mt-3 text-xs text-gray-500">
+                      💡 Tip: Speak clearly and at a moderate pace for best transcription results
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Completed Screen */}
+          {stage === 'completed' && !showResults && (
+            <div className="p-12 text-center">
+              <div className="relative mb-8">
+                <div className="absolute inset-0 bg-green-400 blur-3xl opacity-30 rounded-full" />
+                <div className="relative bg-gradient-to-br from-green-100 to-emerald-100 w-32 h-32 rounded-3xl flex items-center justify-center mx-auto shadow-xl">
+                  <CheckCircle className="text-green-600" size={64} />
+                </div>
+              </div>
+
+              <h2 className="text-4xl font-bold text-gray-800 mb-4">Interview Completed 🎉</h2>
+              <p className="text-gray-600 text-xl mb-8">
+                You've successfully completed all {MBA_QUESTIONS.length} questions!
+              </p>
+
+              <div className="flex gap-4 justify-center">
+                <button
+                  onClick={generateResults}
+                  disabled={isGeneratingResults}
+                  className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-10 py-4 rounded-2xl font-bold text-lg transition-all hover:scale-105 shadow-xl flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isGeneratingResults ? (
+                    <>
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+                      Analyzing Performance...
+                    </>
+                  ) : (
+                    <>
+                      <BarChart3 size={24} />
+                      Generate Results
+                    </>
+                  )}
+                </button>
+
+                <button
+                  onClick={resetInterview}
+                  className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-10 py-4 rounded-2xl font-bold text-lg transition-all hover:scale-105 shadow-xl flex items-center gap-3"
+                >
+                  <RefreshCw size={24} />
+                  Start New Interview
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Results Screen */}
+          {showResults && results && (
+            <div className="p-8">
+              <div className="text-center mb-8">
+                <h2 className="text-4xl font-bold text-gray-800 mb-2">Interview Analysis Results</h2>
+                <p className="text-gray-600 text-lg">Comprehensive feedback based on your performance</p>
+              </div>
+
+              {/* Overall Score */}
+              <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl p-8 text-white text-center mb-8 shadow-2xl">
+                <div className="text-6xl font-bold mb-2">{results.overallScore}%</div>
+                <div className="text-xl font-medium">Overall Performance Score</div>
+                <div className="text-blue-100 mt-2">
+                  {results.overallScore >= 90 ? "Outstanding! MBA-ready candidate" :
+                   results.overallScore >= 80 ? "Excellent performance" :
+                   results.overallScore >= 70 ? "Strong candidate with good potential" :
+                   "Good foundation, needs some refinement"}
+                </div>
+              </div>
+
+              {/* Detailed Scores */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <div className="bg-white rounded-2xl p-6 shadow-xl border border-gray-200">
+                  <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    <BarChart3 size={20} />
+                    Detailed Performance Metrics
+                  </h3>
+                  <ScoreBar score={results.verbalCommunication.score} label="Verbal Communication" />
+                  <ScoreBar score={results.confidence.score} label="Confidence & Presence" />
+                  <ScoreBar score={results.contentQuality.score} label="Content Quality" />
+                  <ScoreBar score={results.nonVerbalCues.score} label="Non-Verbal Cues" />
+                </div>
+
+                <div className="bg-white rounded-2xl p-6 shadow-xl border border-gray-200">
+                  <h3 className="text-xl font-bold text-gray-800 mb-4">🎯 Key Strengths</h3>
+                  <ul className="space-y-2">
+                    {results.keyStrengths.map((strength, index) => (
+                      <li key={index} className="flex items-start gap-2 text-gray-700">
+                        <CheckCircle size={16} className="text-green-500 mt-1 flex-shrink-0" />
+                        <span>{strength}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+
+              {/* Feedback and Recommendations */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <div className="bg-white rounded-2xl p-6 shadow-xl border border-gray-200">
+                  <h3 className="text-xl font-bold text-gray-800 mb-4">📈 Areas for Improvement</h3>
+                  <ul className="space-y-3">
+                    {results.areasForImprovement.map((area, index) => (
+                      <li key={index} className="flex items-start gap-2 text-gray-700">
+                        <div className="w-2 h-2 bg-orange-500 rounded-full mt-2 flex-shrink-0" />
+                        <span>{area}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="bg-white rounded-2xl p-6 shadow-xl border border-gray-200">
+                  <h3 className="text-xl font-bold text-gray-800 mb-4">💡 Final Recommendations</h3>
+                  <ul className="space-y-3">
+                    {results.finalRecommendations.map((rec, index) => (
+                      <li key={index} className="flex items-start gap-2 text-gray-700">
+                        <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0" />
+                        <span>{rec}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+
+              {/* Category-specific Feedback */}
+              <div className="bg-gradient-to-br from-slate-50 to-blue-50 rounded-2xl p-6 shadow-xl border border-blue-200 mb-8">
+                <h3 className="text-xl font-bold text-gray-800 mb-4">📊 Detailed Feedback by Category</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {Object.entries(results).map(([key, value]) => {
+                    if (typeof value === 'object' && value.score && value.feedback) {
+                      return (
+                        <div key={key} className="bg-white rounded-xl p-4 shadow-sm">
+                          <h4 className="font-bold text-gray-800 mb-2 capitalize">
+                            {key.replace(/([A-Z])/g, ' $1').trim()}
+                          </h4>
+                          <div className="text-sm text-gray-600 space-y-1">
+                            {value.feedback.map((item, idx) => (
+                              <div key={idx} className="flex items-start gap-2">
+                                <div className="w-1 h-1 bg-green-500 rounded-full mt-2 flex-shrink-0" />
+                                <span>{item}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })}
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-4 justify-center">
+                <button
+                  onClick={downloadResults}
+                  className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-8 py-3 rounded-2xl font-bold flex items-center gap-2 shadow-xl hover:scale-105 transition-all"
+                >
+                  <Download size={20} />
+                  Download Results
+                </button>
+                <button
+                  onClick={resetInterview}
+                  className="bg-gradient-to-r from-gray-600 to-slate-700 text-white px-8 py-3 rounded-2xl font-bold flex items-center gap-2 shadow-xl hover:scale-105 transition-all"
+                >
+                  <RefreshCw size={20} />
+                  New Interview
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="text-center mt-6 text-white/80 text-sm">
+          🔒 Your privacy matters. All recordings are encrypted and reviewed only by authorized staff.
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -7,6 +7,7 @@ import Register from './components/auth/Register';
 import Dashboard from './components/Dashboard';
 import ResumeParser from './components/ResumeParser';
 import EssayWritingPage from './components/EssayWritingPage';
+import MBAVideoInterview from './components/MBAVideoInterview';
 import LoadingSpinner from './components/ui/LoadingSpinner';
 
 // Protected Route Component
@@ -62,6 +63,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <EssayWritingPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/mba-interview"
+              element={
+                <ProtectedRoute>
+                  <MBAVideoInterview />
                 </ProtectedRoute>
               }
             />
