@@ -6,6 +6,7 @@ import Login from './components/auth/Login';
 import Register from './components/auth/Register';
 import Dashboard from './components/Dashboard';
 import ResumeParser from './components/ResumeParser';
+import EssayWritingPage from './components/EssayWritingPage';
 import LoadingSpinner from './components/ui/LoadingSpinner';
 
 // Protected Route Component
@@ -60,7 +61,7 @@ function App() {
               path="/essay-writing"
               element={
                 <ProtectedRoute>
-                  <ResumeParser />
+                  <EssayWritingPage />
                 </ProtectedRoute>
               }
             />

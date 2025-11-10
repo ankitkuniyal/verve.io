@@ -5,7 +5,7 @@ import helmet from 'helmet';
 import dotenv from 'dotenv';
 
 import authRoutes from './routes/authRoutes.js';
-
+import essayRoutes from './routes/essayRoutes.js';
 dotenv.config();
 
 const app = express();
@@ -18,6 +18,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/analysis/essay-writing', essayRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

@@ -47,7 +47,7 @@ const EssayWritingPage = () => {
     setError('');
     try {
       const response = await fetch(
-        `${import.meta.env.SERVER_URL || 'http://localhost:3000'}/api/analysis/analyze`,
+        `${import.meta.env.SERVER_URL || 'http://localhost:3000'}/api/analysis/essay-writing/analyze`,
         {
           method: 'POST',
           headers: {
