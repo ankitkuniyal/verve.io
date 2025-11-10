@@ -67,7 +67,7 @@ const DetailedAnalysis = () => {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Detailed AI Analysis</h1>
-            <p className="text-gray-600">Powered by Gemini 2.5 Flash - {selectedExam?.name || examType}</p>
+            <p className="text-gray-600">Powered by verve.io - {selectedExam?.name || examType}</p>
           </div>
           <button
             onClick={() => navigate('/ai-quiz')}

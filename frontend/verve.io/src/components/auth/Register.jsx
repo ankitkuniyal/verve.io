@@ -96,7 +96,7 @@ const Register = () => {
                         Sign Up
                       </h2>
                       <p className="text-gray-600 text-sm">
-                        Join Quiz Master today
+                        Join <span className="text-indigo-600 font-bold">verve.io</span> today
                       </p>
                     </div>
 

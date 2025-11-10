@@ -220,15 +220,15 @@ QUIZ: ${JSON.stringify(quizData, null, 2)}
 ANSWERS: ${JSON.stringify(userAnswers)}
 
 RETURN ONLY THIS JSON FORMAT, NO OTHER TEXT:
-
+THIS IS A SAMPLE OUTPUT, YOU REPLY AS PER THE USER PERFORMANCE
 {
   "success": true,
   "message": "Performance analyzed successfully",
   "analysis": {
-    "overallScore": 85,
-    "correctAnswers": 8,
-    "totalQuestions": 10,
-    "timeTaken": 1200,
+    "overallScore": ,
+    "correctAnswers": ,
+    "totalQuestions": ,
+    "timeTaken": ,
     "examType": "${examType}",
     "questionsAppeared": [
       {
