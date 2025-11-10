@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { ArrowLeft, Lightbulb } from 'lucide-react';
 
 const EssayWritingPage = () => {
   const { topicId } = useParams();
@@ -98,9 +99,21 @@ const EssayWritingPage = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
+        {/* Add this Back to Dashboard button */}
+    <div className="flex justify-end mb-6">
+      <a 
+        href="/dashboard"
+        className="bg-white hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg transition-all shadow-sm hover:shadow flex items-center gap-2 text-sm font-medium border border-slate-200"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        Back to Dashboard
+      </a>
+    </div>
+        
         {/* Header Section */}
         <div className="mb-8">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+            
             {/* Welcome Section */}
             <div className="flex-1">
               <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-2">
@@ -109,6 +122,7 @@ const EssayWritingPage = () => {
               <p className="text-lg text-gray-600 mb-4">
                 Write your essay on the topic below. Minimum 200 words required.
               </p>
+              
 
               {/* Topic Card */}
               <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-2xl p-4 border-l-4 border-blue-500 mb-4">
@@ -133,35 +147,8 @@ const EssayWritingPage = () => {
                 })}
               </div>
             </div>
-
-            {/* Profile Card */}
-            <div className="w-full lg:max-w-md">
-              <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-                <div className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
-                        <i className="fas fa-user-circle text-white text-xl"></i>
-                      </div>
-                      <div>
-                        <h6 className="font-semibold text-gray-900">Aaryan</h6>
-                        <p className="text-sm text-gray-500">aaaryan@gmail.com</p>
-                        <span className="inline-block bg-gradient-to-r from-blue-500 to-blue-600 text-white text-xs px-2 py-1 rounded-full mt-1">
-                          MBA Candidate
-                        </span>
-                      </div>
-                    </div>
-                    <button 
-                      onClick={() => navigate('/dashboard')}
-                      className="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center text-gray-600 hover:text-gray-800 transition-colors"
-                      title="Back to Dashboard"
-                    >
-                      <i className="fas fa-arrow-left"></i>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
+            
+            
           </div>
         </div>
 

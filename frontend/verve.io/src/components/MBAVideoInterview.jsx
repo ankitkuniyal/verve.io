@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera, Video, Clock, CheckCircle, Play, Square, SkipForward, RefreshCw, BarChart3, Download } from 'lucide-react';
+import { ArrowLeft, Camera, Video, Clock, CheckCircle, Play, Square, SkipForward, RefreshCw, BarChart3, Download } from 'lucide-react';
 
 const MBA_QUESTIONS = [
   {
@@ -582,11 +582,22 @@ export default function MBAVideoInterview() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4">
-      <div className="max-w-6xl mx-auto">
-
+      <div className="max-w-7xl mx-auto">
+        
+        {/* Back to Dashboard button */}
+        <div className="flex justify-end mb-6">
+          <a 
+            href="/dashboard"
+            className="bg-white hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg transition-all shadow-sm hover:shadow flex items-center gap-2 text-sm font-medium border border-slate-200"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Dashboard
+          </a>
+        </div>
         
         {/* MAIN BODY */}
         <div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-slate-100">
+          
           {/* Welcome Screen */}
           {stage === 'welcome' && (
             <div className="p-12 text-center">
@@ -642,165 +653,188 @@ export default function MBAVideoInterview() {
             </div>
           )}
 
-          {/* Prep or Recording Stage */}
+          {/* Prep or Recording Stage - COMPACT LAYOUT */}
           {(stage === 'preparing' || stage === 'recording') && (
-            <div className="p-8 space-y-6">
-              <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-2xl p-8 text-white shadow-lg">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-sm font-bold bg-white/30 px-4 py-2 rounded-full">{currentQuestion.category}</span>
-                  <span className="text-sm font-bold bg-white/30 px-4 py-2 rounded-full">
-                    Question {currentQuestionIndex + 1} of {MBA_QUESTIONS.length}
-                  </span>
-                </div>
-                <h3 className="text-3xl font-bold mb-4">{currentQuestion.question}</h3>
-                <p className="text-white/80 text-sm italic">💡 {currentQuestion.tips}</p>
-              </div>
-
-              {/* ✅ FIXED VIDEO CONTAINER */}
-              <div className="relative bg-black rounded-2xl overflow-hidden shadow-lg">
-                {isCameraOn && (
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    playsInline
-                    muted
-                    className="w-full h-[500px] object-cover bg-black rounded-2xl"
-                    style={{ transform: 'scaleX(-1)' }}
-                  />
-                )}
-
-                {/* Loading overlay */}
-                {!isCameraOn && !cameraError && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black h-[500px]">
-                    <div className="text-white text-center">
-                      <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-white mx-auto mb-4"></div>
-                      <p className="text-xl">Initializing camera...</p>
-                      <p className="text-sm text-gray-300 mt-2">Please allow camera permissions if prompted</p>
+            <div className="p-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[calc(100vh-200px)]">
+                
+                {/* LEFT COLUMN - Combined Question & Transcript */}
+                <div className="flex flex-col h-full">
+                  <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-2xl p-6 text-white shadow-lg flex-1 flex flex-col">
+                    {/* Header */}
+                    <div className="mb-4">
+                      <div className="text-sm font-medium text-white/80 mb-1">Introduction</div>
+                      <div className="text-lg font-bold mb-2">Question {currentQuestionIndex + 1} of {MBA_QUESTIONS.length}</div>
                     </div>
-                  </div>
-                )}
-
-                {/* Camera error overlay */}
-                {cameraError && stage !== 'welcome' && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black h-[500px]">
-                    <div className="text-white text-center p-6">
-                      <Camera size={64} className="mx-auto mb-4 opacity-50" />
-                      <p className="text-xl text-red-300 mb-2">Camera Error</p>
-                      <p className="text-sm text-gray-300 max-w-md">{cameraError}</p>
-                      <button
-                        onClick={startCamera}
-                        className="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-xl font-medium"
-                      >
-                        Retry Camera
-                      </button>
+                    
+                    {/* Question */}
+                    <h3 className="text-2xl font-bold mb-3 leading-tight flex-1">{currentQuestion.question}</h3>
+                    
+                    {/* Tip - No Gap */}
+                    <div className="mb-4 p-3 bg-white/20 rounded-lg">
+                      <p className="text-white/90 text-sm">💡 {currentQuestion.tips}</p>
                     </div>
-                  </div>
-                )}
 
-                <div className="absolute top-6 left-6 right-6 flex justify-between items-center">
-                  <div
-                    className={`px-6 py-3 rounded-2xl font-bold flex items-center gap-3 shadow-lg ${
-                      stage === 'preparing'
-                        ? 'bg-yellow-500 text-white'
-                        : 'bg-red-600 text-white'
-                    }`}
-                  >
-                    {stage === 'preparing' ? (
-                      <>
-                        <Clock size={24} className="animate-pulse" />
-                        <span className="text-lg">Preparation Time</span>
-                      </>
-                    ) : (
-                      <>
-                        <div className="w-3 h-3 bg-white rounded-full animate-pulse" />
-                        <span className="text-lg">RECORDING</span>
-                      </>
-                    )}
-                  </div>
-
-                  <div className="bg-black/80 px-8 py-4 rounded-2xl shadow-lg">
-                    <div className="text-4xl font-bold text-white tracking-wider">
-                      {stage === 'preparing' ? formatTime(prepTimeLeft) : formatTime(recordTimeLeft)}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Bottom Buttons */}
-                <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex gap-4">
-                  {stage === 'recording' ? (
-                    <>
-                      <button
-                        onClick={stopRecording}
-                        className="bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-2xl font-bold flex items-center gap-3 shadow-lg"
-                      >
-                        <Square size={20} />
-                        Stop Recording
-                      </button>
-                      <button
-                        onClick={skipQuestion}
-                        className="bg-slate-800 hover:bg-slate-900 text-white px-6 py-4 rounded-2xl font-bold flex items-center gap-2 shadow-lg"
-                      >
-                        <SkipForward size={20} />
-                        Skip
-                      </button>
-                    </>
-                  ) : (
-                    <button
-                      onClick={skipQuestion}
-                      className="bg-slate-800/80 hover:bg-slate-900 text-white px-6 py-3 rounded-2xl font-semibold flex items-center gap-2 shadow-lg"
-                    >
-                      <SkipForward size={18} />
-                      Skip Question
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* ✅ FIXED LIVE TRANSCRIPT SECTION */}
-              {stage === 'recording' && (
-                <div className="bg-gradient-to-br from-slate-50 to-blue-50 rounded-2xl p-6 shadow-lg border-2 border-blue-200">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-                      <span className="font-bold text-slate-700">Live Transcript</span>
-                    </div>
-                    {isListening && (
-                      <span className="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full font-medium">
-                        🎤 Listening...
-                      </span>
-                    )}
-                    {!speechRecognitionSupported && (
-                      <span className="text-xs bg-amber-100 text-amber-700 px-3 py-1 rounded-full font-medium">
-                        ⚠️ Speech recognition not supported
-                      </span>
-                    )}
-                  </div>
-                  <div className="bg-white rounded-xl p-4 min-h-[120px] max-h-[200px] overflow-y-auto shadow-inner border border-slate-200">
-                    {transcript ? (
-                      <p className="text-slate-800 leading-relaxed">
-                        {transcript}
-                      </p>
-                    ) : (
-                      <div className="text-center text-slate-400 italic py-8">
-                        {speechRecognitionSupported ? (
-                          isListening ? (
-                            "Start speaking... Your words will appear here in real-time"
-                          ) : (
-                            "Initializing speech recognition..."
-                          )
-                        ) : (
-                          "Speech recognition is not supported in your browser. Try Chrome or Edge."
-                        )}
+                    {/* Voice-to-Text Transcript - Right Below Tip */}
+                    {stage === 'recording' && (
+                      <div className="flex-1 flex flex-col min-h-0">
+                        <div className="border-t border-white/30 pt-3">
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse"></div>
+                            <span className="font-bold text-white text-sm">Live Transcript</span>
+                            {isListening && (
+                              <span className="text-xs bg-green-500/40 text-green-200 px-2 py-1 rounded-full font-medium ml-2">
+                                Listening...
+                              </span>
+                            )}
+                          </div>
+                          <div className="bg-black/30 rounded-lg p-3 flex-1 overflow-y-auto min-h-[120px]">
+                            {transcript ? (
+                              <p className="text-white leading-relaxed text-sm">
+                                {transcript}
+                              </p>
+                            ) : (
+                              <div className="text-center text-white/60 italic py-4 text-sm">
+                                {speechRecognitionSupported ? (
+                                  isListening ? (
+                                    "Start speaking... Your words will appear here in real-time"
+                                  ) : (
+                                    "Initializing speech recognition..."
+                                  )
+                                ) : (
+                                  "Speech recognition is not supported in your browser. Try Chrome or Edge."
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>
-                  {speechRecognitionSupported && (
-                    <div className="mt-3 text-xs text-slate-500">
-                      💡 Tip: Speak clearly and at a moderate pace for best transcription results
-                    </div>
-                  )}
+
+                  {/* Control Buttons - ALWAYS VISIBLE */}
+                  <div className="flex gap-3 mt-4">
+                    {stage === 'recording' ? (
+                      <>
+                        <button
+                          onClick={stopRecording}
+                          className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg flex-1 justify-center"
+                        >
+                          <Square size={18} />
+                          Stop Recording
+                        </button>
+                        <button
+                          onClick={skipQuestion}
+                          className="bg-slate-700 hover:bg-slate-800 text-white px-4 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg"
+                        >
+                          <SkipForward size={18} />
+                          Skip
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={skipQuestion}
+                        className="bg-slate-700 hover:bg-slate-800 text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-2 shadow-lg w-full justify-center"
+                      >
+                        <SkipForward size={18} />
+                        Skip Question
+                      </button>
+                    )}
+                  </div>
                 </div>
-              )}
+
+                {/* RIGHT COLUMN - Video with Timer */}
+                <div className="flex flex-col h-full">
+                  {/* Video Container */}
+                  <div className="relative bg-black rounded-2xl overflow-hidden shadow-lg flex-1">
+                    {isCameraOn && (
+                      <video
+                        ref={videoRef}
+                        autoPlay
+                        playsInline
+                        muted
+                        className="w-full h-full object-cover"
+                        style={{ transform: 'scaleX(-1)' }}
+                      />
+                    )}
+
+                    {/* Loading overlay */}
+                    {!isCameraOn && !cameraError && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black">
+                        <div className="text-white text-center">
+                          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-3"></div>
+                          <p className="text-lg">Initializing camera...</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Large Timer Display on Video */}
+                    <div className="absolute top-4 right-4">
+                      <div className="bg-black/80 backdrop-blur-sm px-4 py-3 rounded-xl shadow-2xl border border-white/20">
+                        <div className="text-center">
+                          <div className="text-white text-xs font-medium mb-1">
+                            {stage === 'preparing' ? 'PREPARATION' : 'RECORDING'}
+                          </div>
+                          <div className="text-2xl font-bold text-white mb-1 font-mono">
+                            {stage === 'preparing' ? formatTime(prepTimeLeft) : formatTime(recordTimeLeft)}
+                          </div>
+                          <div className={`text-xs font-semibold ${
+                            stage === 'preparing' ? 'text-yellow-300' : 'text-red-300'
+                          }`}>
+                            {stage === 'preparing' ? 'Get Ready...' : 'LIVE'}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Progress Bar at Bottom */}
+                    <div className="absolute bottom-0 left-0 right-0 bg-black/60 backdrop-blur-sm p-3">
+                      <div className="flex items-center justify-between text-white mb-1">
+                        <span className="text-sm font-medium">
+                          Progress: {completedQuestions.length + (stage === 'recording' ? 1 : 0)}/{MBA_QUESTIONS.length}
+                        </span>
+                        <span className="text-sm font-bold">
+                          {Math.round(((completedQuestions.length + (stage === 'recording' ? 1 : 0)) / MBA_QUESTIONS.length) * 100)}%
+                        </span>
+                      </div>
+                      <div className="w-full bg-white/30 rounded-full h-1.5">
+                        <div 
+                          className="bg-green-500 h-1.5 rounded-full transition-all duration-300"
+                          style={{ 
+                            width: `${((completedQuestions.length + (stage === 'recording' ? 1 : 0)) / MBA_QUESTIONS.length) * 100}%` 
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Interview Tips - Compact */}
+                  <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 mt-4">
+                    <h4 className="font-bold text-slate-800 mb-2 text-sm flex items-center gap-2">
+                      <Clock size={16} />
+                      Interview Tips
+                    </h4>
+                    <ul className="text-slate-600 text-xs space-y-1">
+                      <li className="flex items-start gap-2">
+                        <div className="w-1 h-1 bg-blue-500 rounded-full mt-1.5 flex-shrink-0" />
+                        <span>Maintain eye contact with the camera</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <div className="w-1 h-1 bg-blue-500 rounded-full mt-1.5 flex-shrink-0" />
+                        <span>Speak clearly and at a moderate pace</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <div className="w-1 h-1 bg-blue-500 rounded-full mt-1.5 flex-shrink-0" />
+                        <span>Use the STAR method for behavioral questions</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <div className="w-1 h-1 bg-blue-500 rounded-full mt-1.5 flex-shrink-0" />
+                        <span>Be authentic and showcase your personality</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
@@ -970,7 +1004,7 @@ export default function MBAVideoInterview() {
           )}
         </div>
 
-        <div className="text-center mt-6 text-slate-600 text-sm">
+        <div className="text-center mt-4 text-slate-600 text-xs">
           🔒 Your privacy matters. All recordings are encrypted and reviewed only by authorized staff.
         </div>
       </div>

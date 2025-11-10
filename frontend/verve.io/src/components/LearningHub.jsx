@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Play, Book, FileText, ExternalLink, Clock, Users, Star, Search, Filter, ThumbsUp, Download, Share2, Bookmark, Eye } from 'lucide-react';
+import { ArrowLeft, Play, Book, FileText, ExternalLink, Clock, Users, Star, Search, Filter, ThumbsUp, Download, Share2, Bookmark, Eye } from 'lucide-react';
 
 const LearningHub = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -328,6 +328,7 @@ const LearningHub = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 py-8">
       <div className="max-w-7xl mx-auto px-6">
+        
         {/* Header */}
         <div className="mb-10">
           <div className="flex flex-col lg:flex-row gap-6 items-start justify-between">
@@ -339,6 +340,16 @@ const LearningHub = () => {
                 Curated collection of videos, articles, and materials to ace your MBA preparation
               </p>
             </div>
+            {/* Add this Back to Dashboard button */}
+    <div className="flex justify-end mb-6">
+      <a 
+        href="/dashboard"
+        className="bg-white hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg transition-all shadow-sm hover:shadow flex items-center gap-2 text-sm font-medium border border-slate-200"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        Back to Dashboard
+      </a>
+    </div>
 
             
           </div>
