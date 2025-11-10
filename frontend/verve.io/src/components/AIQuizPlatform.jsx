@@ -52,6 +52,15 @@ const AIQuizPlatform = () => {
       sections: ['Verbal Reasoning', 'Quantitative Reasoning', 'Analytical Writing'],
       questionTypes: ['MCQ', 'Numeric Entry'],
       pattern: 'Computer Adaptive Test'
+    },
+    {
+      id: 'xat',
+      name: 'XAT (Xavier Aptitude Test)',
+      description: 'MBA Entrance Exam conducted by XLRI',
+      duration: 180,
+      sections: ['Verbal and Logical Ability', 'Decision Making', 'Quantitative Ability & Data Interpretation', 'General Knowledge'],
+      questionTypes: ['MCQ'],
+      pattern: 'Online Computer Based Test'
     }
   ];
 

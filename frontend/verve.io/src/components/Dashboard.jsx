@@ -45,6 +45,9 @@ import {
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 
+// Import useNavigate for redirect
+import { useNavigate } from 'react-router-dom';
+
 // Firebase logout
 import { getAuth, signOut } from 'firebase/auth';
 
@@ -158,6 +161,9 @@ export default function Dashboard() {
     month: 'long', 
     day: 'numeric' 
   });
+
+  // Add useNavigate for redirecting
+  const navigate = useNavigate();
 
   // Hardcoded stats
   const stats = {
@@ -572,25 +578,39 @@ export default function Dashboard() {
 
         {/* Performance Insights */}
         <div className="grid lg:grid-cols-2 gap-6 mb-10">
-          <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
-            <h5 className="font-bold text-gray-800 text-xl flex items-center gap-2 mb-4">
-              <TargetIcon className="text-red-600" size={24} />
-              Areas to Improve
-            </h5>
-            <div className="space-y-4">
-              <div className="p-4 bg-red-50 rounded-lg border-l-4 border-red-500">
-                <div className="font-semibold text-gray-800">Weakest Topic</div>
-                <div className="text-sm text-gray-600 mt-1">{stats.weakestTopic}</div>
-                <div className="text-xs text-gray-500 mt-2">Focus on this area for better results</div>
-              </div>
-              <div className="p-4 bg-green-50 rounded-lg border-l-4 border-green-500">
-                <div className="font-semibold text-gray-800">Strongest Topic</div>
-                <div className="text-sm text-gray-600 mt-1">{stats.strongestTopic}</div>
-                <div className="text-xs text-gray-500 mt-2">Keep up the excellent work!</div>
-              </div>
-            </div>
+          {/* Main Character: Navigation Button (Learning Hub) */}
+          <div className="relative bg-gradient-to-br from-blue-600 to-blue-400 rounded-2xl shadow-2xl border-4 border-blue-700 flex flex-col items-center justify-center min-h-[340px] p-0">
+            <button
+              className="flex flex-col items-center justify-center w-full h-full py-10 bg-blue-600 hover:bg-blue-700 transition-all duration-300 rounded-2xl shadow-2xl group border-b-4 border-blue-900"
+              style={{ minHeight: 240 }}
+              onClick={() => navigate('/learning-hub')}
+              type="button"
+              aria-label="Go to Learning Hub"
+            >
+              <span className="flex items-center gap-3 mb-5">
+                <ArrowRight size={48} className="text-white drop-shadow-lg group-hover:translate-x-2 transition-all duration-300" />
+                <span className="text-3xl font-extrabold text-white drop-shadow-lg tracking-wide">
+                  Go to Learning Hub
+                </span>
+              </span>
+              <span className="text-lg text-white/90 font-semibold">Jump into learning. Your personalized resource hub.</span>
+              <span className="mt-6 flex flex-col items-center w-full gap-2">
+                {/* Sub-titles for context */}
+                <span className="text-white/70 text-base flex items-center gap-2">
+                  <TargetIcon className="text-red-300" size={18} />
+                  Improve your <span className="font-bold ml-1">{stats.weakestTopic}</span>
+                </span>
+                <span className="text-xs text-white/60 mt-1">Focus on this area for better results</span>
+                <span className="text-white/70 text-base flex items-center gap-2 mt-3">
+                  <Star className="text-green-300" size={18} />
+                  Keep up your strength in <span className="font-bold ml-1">{stats.strongestTopic}</span>
+                </span>
+                <span className="text-xs text-white/60 mt-1">Keep up the excellent work!</span>
+              </span>
+            </button>
           </div>
 
+          {/* Weekly Progress */}
           <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
             <h5 className="font-bold text-gray-800 text-xl flex items-center gap-2 mb-4">
               <PieChart className="text-purple-600" size={24} />
