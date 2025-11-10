@@ -1,6 +1,7 @@
 // src/components/PDFTextReader.jsx
 import React, { useState, useRef, useEffect } from "react";
 import {
+  ArrowLeft,
   Upload,
   FileText,
   Loader2,
@@ -25,7 +26,7 @@ export default function PDFTextReader() {
   const [extracting, setExtracting] = useState(false);
   const [error, setError] = useState("");
   const [sections, setSections] = useState([]);
-  const [recommendations, setRecommendations] = useState([]);
+  const [analysis, setAnalysis] = useState(null); // JSON from /api/resume/analyze
   const [activeTab, setActiveTab] = useState("extracted"); // "extracted" or "recommendations"
   const [uploadStatus, setUploadStatus] = useState("");
   const fileInputRef = useRef(null);
@@ -55,7 +56,7 @@ export default function PDFTextReader() {
       setFile(selectedFile);
       setError("");
       setSections([]);
-      setRecommendations([]);
+      setAnalysis(null);
       setActiveTab("extracted");
       setUploadStatus("");
     } else {
@@ -144,62 +145,6 @@ export default function PDFTextReader() {
       .filter((line) => line.trim() !== "");
   };
 
-  // Generate Recommendations
-  const generateRecommendations = (sections) => {
-    const hardcodedRecommendations = [
-      {
-        id: 1,
-        title: "Add Quantifiable Achievements",
-        description:
-          "Include metrics like 'increased efficiency by 30%' or 'managed team of 5 people' to make your accomplishments stand out.",
-        priority: "high",
-      },
-      {
-        id: 2,
-        title: "Include More Technical Skills",
-        description:
-          "Consider adding specific programming languages, tools, and frameworks you're proficient with.",
-        priority: "medium",
-      },
-      {
-        id: 3,
-        title: "Optimize Project Descriptions",
-        description:
-          "Add links to GitHub repositories or live demos for your projects to provide tangible proof of your work.",
-        priority: "medium",
-      },
-      {
-        id: 4,
-        title: "Professional Summary",
-        description:
-          "Add a 2-3 sentence professional summary at the top to quickly showcase your value proposition.",
-        priority: "low",
-      },
-      {
-        id: 5,
-        title: "Certification Dates",
-        description:
-          "Include completion dates for your certifications to show they're current and relevant.",
-        priority: "low",
-      },
-    ];
-
-    const content = sections.map((s) => s.content.join(" ")).join(" ").toLowerCase();
-
-    let filteredRecs = hardcodedRecommendations;
-    if (sections.some((s) => s.title.toLowerCase().includes("skill"))) {
-      filteredRecs = filteredRecs.filter((rec) => rec.id !== 2);
-    }
-    const projectsSection = sections.find((s) =>
-      s.title.toLowerCase().includes("project")
-    );
-    if (projectsSection && projectsSection.content.length > 2) {
-      filteredRecs = filteredRecs.filter((rec) => rec.id !== 3);
-    }
-
-    return filteredRecs;
-  };
-
   // ✅ Save extracted data to Firebase Firestore
   const saveToFirebase = async (resumeData) => {
     try {
@@ -215,7 +160,7 @@ export default function PDFTextReader() {
     }
   };
 
-  // Handle Extraction and Upload
+  // Handle Extraction, Analyze, and Upload
   const handleExtract = async () => {
     if (!file) return;
     setExtracting(true);
@@ -242,76 +187,83 @@ export default function PDFTextReader() {
       // Save to Firebase instead of server
       await saveToFirebase(resumeData);
 
-      const recs = generateRecommendations(parsedSections);
-      setRecommendations(recs);
+      // Send extracted text to /api/resume/analyze
+      const analyzeResp = await fetch("http://localhost:3000/api/resume/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resume: rawText }),
+      });
+      const analyzeJson = await analyzeResp.json();
+      if (analyzeJson && analyzeJson.success && analyzeJson.analysis) {
+        setAnalysis(analyzeJson.analysis);
+      } else {
+        setAnalysis(null);
+        setError("Failed to get recommendations from AI analysis.");
+      }
     } catch (err) {
       console.error(err);
-      setError("Failed to extract text. Please upload a valid text-based PDF.");
+      setError("Failed to extract text or analyze. Please upload a valid text-based PDF.");
     } finally {
       setExtracting(false);
     }
   };
 
-  // Section icons
+  // Section icons (unchanged)
   const iconForSection = (title) => {
     const map = {
-      Profile: <BookOpen className="w-5 h-5 text-indigo-600" />,
-      Projects: <Code className="w-5 h-5 text-indigo-600" />,
-      Achievements: <Award className="w-5 h-5 text-indigo-600" />,
-      Education: <GraduationCap className="w-5 h-5 text-indigo-600" />,
-      Certifications: <Layers className="w-5 h-5 text-indigo-600" />,
+      Profile: <BookOpen className="w-5 h-5 text-blue-600" />,
+      Projects: <Code className="w-5 h-5 text-blue-600" />,
+      Achievements: <Award className="w-5 h-5 text-blue-600" />,
+      Education: <GraduationCap className="w-5 h-5 text-blue-600" />,
+      Certifications: <Layers className="w-5 h-5 text-blue-600" />,
       "Technical Skills and Interests": (
-        <Sparkles className="w-5 h-5 text-indigo-600" />
+        <Sparkles className="w-5 h-5 text-blue-600" />
       ),
       "Positions of Responsibility": (
-        <Briefcase className="w-5 h-5 text-indigo-600" />
+        <Briefcase className="w-5 h-5 text-blue-600" />
       ),
     };
-    return map[title] || <FileText className="w-5 h-5 text-indigo-600" />;
-  };
-
-  const getPriorityColor = (priority) => {
-    switch (priority) {
-      case "high":
-        return "text-red-600 bg-red-50 border-red-200";
-      case "medium":
-        return "text-yellow-600 bg-yellow-50 border-yellow-200";
-      case "low":
-        return "text-green-600 bg-green-50 border-green-200";
-      default:
-        return "text-gray-600 bg-gray-50 border-gray-200";
-    }
+    return map[title] || <FileText className="w-5 h-5 text-blue-600" />;
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 p-6">
-      <div className="max-w-6xl mx-auto">
+    <section className="bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen py-8">
+      <div className="max-w-7xl mx-auto px-6">
         {/* Header */}
-        <div className="mb-8 text-center">
-          <div className="flex items-center justify-center gap-3 mb-2">
-            <BookOpen className="w-10 h-10 text-indigo-600" />
-            <h1 className="text-5xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-              MBA PDF Resume Parser
-            </h1>
+        <div className="mb-10">
+          <div className="flex flex-col lg:flex-row gap-6 items-start">
+            <div className="flex-1">
+              <h1 className="text-4xl font-black text-slate-900 tracking-tight">
+                AI Resume Parser 
+              </h1>
+              <p className="text-lg text-slate-500 mt-2">
+                Upload your resume for AI-powered analysis and personalized recommendations
+              </p>
+            </div>
+            <a 
+              href="/dashboard"
+              className="bg-white hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg transition-all shadow-sm hover:shadow flex items-center gap-2 text-sm font-medium border border-slate-200"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to Dashboard
+            </a>
           </div>
-          <p className="text-slate-600 text-lg">
-            Extract and store your resume data directly with personal insights.
-          </p>
         </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <div className="grid lg:grid-cols-3 gap-6">
           {/* Upload Panel */}
           <div className="space-y-6">
-            <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 sticky top-6">
-              <h2 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
-                <Upload className="w-5 h-5 text-indigo-600" /> Upload Resume PDF
+            <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-100 sticky top-6">
+              <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                <Upload className="w-5 h-5 text-blue-600" /> 
+                Upload Resume PDF
               </h2>
 
               <div
                 onClick={() => fileInputRef.current?.click()}
-                className="border-2 border-dashed border-indigo-300 rounded-xl p-6 text-center cursor-pointer hover:border-indigo-500 hover:bg-indigo-50 transition-all"
+                className="border-2 border-dashed border-slate-300 rounded-xl p-6 text-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-all group"
               >
-                <FileText className="w-12 h-12 text-indigo-400 mx-auto mb-3" />
+                <FileText className="w-12 h-12 text-slate-400 group-hover:text-blue-500 mx-auto mb-3 transition-colors" />
                 <p className="text-sm font-medium text-slate-700 mb-1">
                   {file ? file.name : "Click to upload PDF"}
                 </p>
@@ -329,15 +281,17 @@ export default function PDFTextReader() {
               <button
                 onClick={handleExtract}
                 disabled={!file || extracting}
-                className="mt-4 w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-3 rounded-xl font-medium hover:from-indigo-700 hover:to-purple-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                className="mt-4 w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 rounded-xl font-medium hover:from-blue-700 hover:to-indigo-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-sm hover:shadow"
               >
                 {extracting ? (
                   <>
-                    <Loader2 className="w-5 h-5 animate-spin" /> Processing...
+                    <Loader2 className="w-5 h-5 animate-spin" /> 
+                    Processing...
                   </>
                 ) : (
                   <>
-                    <FileText className="w-5 h-5" /> Extract & Save
+                    <FileText className="w-5 h-5" /> 
+                    Extract & Analyze
                   </>
                 )}
               </button>
@@ -369,7 +323,7 @@ export default function PDFTextReader() {
           </div>
 
           {/* Resume Display & Recommendations */}
-          <div className="lg:col-span-2 bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+          <div className="lg:col-span-2 bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden">
             {/* Tab Navigation */}
             {sections.length > 0 && (
               <div className="border-b border-slate-200">
@@ -378,13 +332,18 @@ export default function PDFTextReader() {
                     onClick={() => setActiveTab("extracted")}
                     className={`flex-1 py-4 px-6 text-center font-medium transition-all ${
                       activeTab === "extracted"
-                        ? "bg-indigo-50 text-indigo-700 border-b-2 border-indigo-600"
+                        ? "bg-blue-50 text-blue-700 border-b-2 border-blue-600"
                         : "text-slate-600 hover:text-slate-800 hover:bg-slate-50"
                     }`}
                   >
                     <div className="flex items-center justify-center gap-2">
                       <FileText className="w-4 h-4" />
-                      Summarized Resume
+                      Parsed Resume
+                      {sections.length > 0 && (
+                        <span className="bg-blue-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                          {sections.length}
+                        </span>
+                      )}
                     </div>
                   </button>
                   <button
@@ -397,12 +356,12 @@ export default function PDFTextReader() {
                   >
                     <div className="flex items-center justify-center gap-2">
                       <Lightbulb className="w-4 h-4" />
-                      Recommendations
-                      {recommendations.length > 0 && (
+                      AI Recommendations
+                      {analysis ? (
                         <span className="bg-amber-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                          {recommendations.length}
+                          1
                         </span>
-                      )}
+                      ) : null}
                     </div>
                   </button>
                 </div>
@@ -410,91 +369,143 @@ export default function PDFTextReader() {
             )}
 
             {/* Tab Content */}
-            <div className="p-8 overflow-y-auto max-h-[85vh]">
+            <div className="p-6 overflow-y-auto max-h-[75vh]">
               {extracting ? (
                 <div className="text-center py-12">
-                  <Loader2 className="w-12 h-12 text-indigo-600 animate-spin mx-auto mb-4" />
+                  <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
                   <p className="text-slate-600">
-                    Extracting and saving your resume...
+                    Extracting and analyzing your resume...
                   </p>
                 </div>
               ) : activeTab === "extracted" && sections.length > 0 ? (
-                <div className="space-y-10">
+                <div className="space-y-8">
                   {sections.map((section, i) => (
-                    <div key={i} className="border-b border-slate-200 pb-6">
-                      <div className="flex items-center gap-2 mb-4">
+                    <div key={i} className="border-b border-slate-200 pb-6 last:border-b-0">
+                      <div className="flex items-center gap-3 mb-4">
                         {iconForSection(section.title)}
-                        <h2 className="text-2xl font-semibold text-indigo-700">
+                        <h2 className="text-xl font-bold text-slate-800">
                           {section.title}
                         </h2>
                       </div>
                       <div className="space-y-2 text-slate-700 text-sm leading-relaxed">
                         {section.content.map((line, idx) =>
                           line.startsWith("•") ? (
-                            <p
+                            <div
                               key={idx}
-                              className="ml-4 before:content-['•'] before:mr-2 before:text-indigo-600"
+                              className="flex items-start gap-2 ml-4"
                             >
-                              {line.replace("•", "").trim()}
-                            </p>
+                              <span className="text-blue-600 mt-1.5">•</span>
+                              <span>{line.replace("•", "").trim()}</span>
+                            </div>
                           ) : (
-                            <p key={idx}>{line}</p>
+                            <p key={idx} className="text-slate-600">{line}</p>
                           )
                         )}
                       </div>
                     </div>
                   ))}
                 </div>
-              ) : activeTab === "recommendations" && recommendations.length > 0 ? (
+              ) : activeTab === "recommendations" && analysis ? (
                 <div className="space-y-6">
                   <div className="text-center mb-6">
-                    <Lightbulb className="w-12 h-12 text-amber-500 mx-auto mb-3" />
-                    <h2 className="text-2xl font-semibold text-slate-800">
-                      Resume Recommendations
+                    <div className="w-16 h-16 bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl flex items-center justify-center text-white text-2xl mb-3 mx-auto">
+                      <Lightbulb className="w-8 h-8" />
+                    </div>
+                    <h2 className="text-2xl font-bold text-slate-800">
+                      AI Resume Recommendations
                     </h2>
                     <p className="text-slate-600 mt-2">
-                      Suggestions to improve your resume based on our analysis
+                      Tailored insights and actions powered by our AI engine.
                     </p>
                   </div>
-                  
-                  <div className="space-y-4">
-                    {recommendations.map((rec) => (
-                      <div
-                        key={rec.id}
-                        className={`p-4 rounded-lg border ${getPriorityColor(
-                          rec.priority
-                        )}`}
-                      >
-                        <div className="flex items-start gap-3">
-                          <div
-                            className={`px-2 py-1 rounded text-xs font-medium capitalize ${
-                              rec.priority === "high"
-                                ? "bg-red-100 text-red-800"
-                                : rec.priority === "medium"
-                                ? "bg-yellow-100 text-yellow-800"
-                                : "bg-green-100 text-green-800"
-                            }`}
-                          >
-                            {rec.priority}
-                          </div>
-                          <div>
-                            <h3 className="font-semibold text-sm mb-1">
-                              {rec.title}
-                            </h3>
-                            <p className="text-sm opacity-80">
-                              {rec.description}
-                            </p>
-                          </div>
+                  <div className="grid gap-6">
+                    {/* Strengths */}
+                    {Array.isArray(analysis.strengths) && analysis.strengths.length > 0 && (
+                      <div className="p-4 rounded-xl bg-green-50 border border-green-200">
+                        <div className="flex gap-2 items-center mb-2">
+                          <CheckCircle className="text-green-600 w-5 h-5" />
+                          <span className="font-bold text-green-800">Strengths</span>
                         </div>
+                        <ul className="list-disc ml-6 text-slate-800 text-sm space-y-1">
+                          {analysis.strengths.map((item, i) => (
+                            <li key={i}>{item}</li>
+                          ))}
+                        </ul>
                       </div>
-                    ))}
+                    )}
+                    {/* Improvements */}
+                    {Array.isArray(analysis.improvements) && analysis.improvements.length > 0 && (
+                      <div className="p-4 rounded-xl bg-yellow-50 border border-yellow-200">
+                        <div className="flex gap-2 items-center mb-2">
+                          <Lightbulb className="text-amber-500 w-5 h-5" />
+                          <span className="font-bold text-amber-700">Improvements</span>
+                        </div>
+                        <ul className="list-disc ml-6 text-slate-800 text-sm space-y-1">
+                          {analysis.improvements.map((item, i) => (
+                            <li key={i}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {/* Grammar */}
+                    {Array.isArray(analysis.grammar) && analysis.grammar.length > 0 && (
+                      <div className="p-4 rounded-xl bg-blue-50 border border-blue-200">
+                        <div className="flex gap-2 items-center mb-2">
+                          <Sparkles className="text-blue-500 w-5 h-5" />
+                          <span className="font-bold text-blue-700">Grammar Suggestions</span>
+                        </div>
+                        <ul className="list-disc ml-6 text-slate-800 text-sm space-y-1">
+                          {analysis.grammar.map((item, i) => (
+                            <li key={i}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {/* Formatting */}
+                    {Array.isArray(analysis.formatting) && analysis.formatting.length > 0 && (
+                      <div className="p-4 rounded-xl bg-violet-50 border border-violet-200">
+                        <div className="flex gap-2 items-center mb-2">
+                          <Layers className="text-violet-600 w-5 h-5" />
+                          <span className="font-bold text-violet-700">Formatting</span>
+                        </div>
+                        <ul className="list-disc ml-6 text-slate-800 text-sm space-y-1">
+                          {analysis.formatting.map((item, i) => (
+                            <li key={i}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {/* Missing Sections */}
+                    {Array.isArray(analysis.missingSections) && analysis.missingSections.length > 0 && (
+                      <div className="p-4 rounded-xl bg-orange-50 border border-orange-200">
+                        <div className="flex gap-2 items-center mb-2">
+                          <Award className="text-orange-500 w-5 h-5" />
+                          <span className="font-bold text-orange-700">Missing Sections</span>
+                        </div>
+                        <ul className="list-disc ml-6 text-slate-800 text-sm space-y-1">
+                          {analysis.missingSections.map((item, i) => (
+                            <li key={i}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {/* Summary */}
+                    {typeof analysis.summary === "string" && (
+                      <div className="p-4 rounded-xl bg-gray-50 border border-gray-200">
+                        <div className="flex gap-2 items-center mb-2">
+                          <FileText className="text-slate-600 w-5 h-5" />
+                          <span className="font-bold text-slate-800">Summary</span>
+                        </div>
+                        <p className="text-slate-700 text-sm">{analysis.summary}</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               ) : sections.length === 0 ? (
                 <div className="text-center py-12">
                   <FileText className="w-16 h-16 text-slate-300 mx-auto mb-3" />
                   <p className="text-slate-600">
-                    Upload your PDF to extract and store data.
+                    Upload your PDF resume to get started with AI analysis.
                   </p>
                 </div>
               ) : (
@@ -509,6 +520,6 @@ export default function PDFTextReader() {
           </div>
         </div>
       </div>
-    </div>
+    </section>
   );
 }

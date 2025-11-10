@@ -12,6 +12,7 @@ import LoadingSpinner from './components/ui/LoadingSpinner';
 import ErrorBoundary from './components/ui/ErrorBoundary';
 import AIQuizPlatform from './components/AIQuizPlatform';
 import LearningHub from './components/LearningHub';
+import LandingPage from './components/LandingPage';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -120,7 +121,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/" element={<LandingPage/>} />
           </Routes>
         </div>
       </ErrorBoundary>
