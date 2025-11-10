@@ -61,7 +61,9 @@ export default function Dashboard() {
   ]);
 
   const tipOfTheDay = getTipOfTheDay();
-  const greeting = getGreeting();
+  // Hardcoded greeting for Aaryan
+  const greeting = 'Welcome back';
+  const username = 'Aaryan';
   const currentDate = new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
   // resolvedUserId falls back to the authenticated user's id when route param is missing
@@ -239,8 +241,8 @@ export default function Dashboard() {
         <div className="mb-12">
           <div className="flex flex-col lg:flex-row gap-6 items-start">
             <div className="flex-1">
-              <h1 className="text-4xl font-extrabold text-slate-800">Welcome back, {user.name || 'Learner'}! 👋</h1>
-              <p className="text-lg text-slate-500 mt-2">{greeting} Ready to continue learning?</p>
+              <h1 className="text-4xl font-extrabold text-slate-800">Welcome back, Aaryan! 👋</h1>
+              <p className="text-lg text-slate-500 mt-2">Ready to continue learning?</p>
 
               <div className="mt-6 bg-yellow-100 border-l-4 border-yellow-400 rounded-xl p-4 flex items-center gap-4">
                 <div className="w-10 h-10 rounded-full bg-yellow-500 text-white flex items-center justify-center">
@@ -302,36 +304,59 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Stats Grid */}
+        {/* Navigation Buttons */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white rounded-xl p-6 shadow flex items-center gap-4">
-            <div className="w-14 h-14 bg-linear-to-br from-sky-500 to-indigo-700 text-white rounded-lg flex items-center justify-center text-xl"><i className="fas fa-clipboard-check" /></div>
-            <div>
-              <div className="text-3xl font-bold text-slate-800">{stats.totalQuizzes}</div>
-              <div className="text-sm text-slate-500">Quizzes Submitted</div>
+          <button
+            onClick={() => navigate('/resume-parser')}
+            className="bg-white hover:bg-sky-50 transition-colors rounded-xl p-6 shadow flex flex-col items-center gap-4 group"
+          >
+            <div className="w-14 h-14 bg-linear-to-br from-sky-500 to-indigo-700 text-white rounded-lg flex items-center justify-center text-xl group-hover:scale-110 transition-transform">
+              <i className="fas fa-file-alt" />
             </div>
-          </div>
-          <div className="bg-white rounded-xl p-6 shadow flex items-center gap-4">
-            <div className="w-14 h-14 bg-linear-to-br from-cyan-400 to-sky-700 text-white rounded-lg flex items-center justify-center text-xl"><i className="fas fa-book" /></div>
-            <div>
-              <div className="text-3xl font-bold text-slate-800">{stats.chaptersAttempted}</div>
-              <div className="text-sm text-slate-500">Chapters Attempted</div>
+            <div className="text-center">
+              <div className="text-lg font-bold text-slate-800">Resume Parser</div>
+              <div className="text-sm text-slate-500">AI-Powered Resume Analysis</div>
             </div>
-          </div>
-          <div className="bg-white rounded-xl p-6 shadow flex items-center gap-4">
-            <div className="w-14 h-14 bg-linear-to-br from-emerald-400 to-emerald-600 text-white rounded-lg flex items-center justify-center text-xl"><i className="fas fa-bullseye" /></div>
-            <div>
-              <div className="text-3xl font-bold text-slate-800">{stats.avgScore}%</div>
-              <div className="text-sm text-slate-500">Average Score</div>
+          </button>
+
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="bg-white hover:bg-cyan-50 transition-colors rounded-xl p-6 shadow flex flex-col items-center gap-4 group"
+          >
+            <div className="w-14 h-14 bg-linear-to-br from-cyan-400 to-sky-700 text-white rounded-lg flex items-center justify-center text-xl group-hover:scale-110 transition-transform">
+              <i className="fas fa-brain" />
             </div>
-          </div>
-          <div className="bg-white rounded-xl p-6 shadow flex items-center gap-4">
-            <div className="w-14 h-14 bg-linear-to-br from-yellow-400 to-orange-600 text-white rounded-lg flex items-center justify-center text-xl"><i className="fas fa-fire" /></div>
-            <div>
-              <div className="text-3xl font-bold text-slate-800">{stats.streak}</div>
-              <div className="text-sm text-slate-500">Day Streak</div>
+            <div className="text-center">
+              <div className="text-lg font-bold text-slate-800">AI Quiz</div>
+              <div className="text-sm text-slate-500">Interactive Learning</div>
             </div>
-          </div>
+          </button>
+
+          <button
+            onClick={() => navigate('/essay-writing')}
+            className="bg-white hover:bg-emerald-50 transition-colors rounded-xl p-6 shadow flex flex-col items-center gap-4 group"
+          >
+            <div className="w-14 h-14 bg-linear-to-br from-emerald-400 to-emerald-600 text-white rounded-lg flex items-center justify-center text-xl group-hover:scale-110 transition-transform">
+              <i className="fas fa-pen-fancy" />
+            </div>
+            <div className="text-center">
+              <div className="text-lg font-bold text-slate-800">Written Test</div>
+              <div className="text-sm text-slate-500">Essay Writing Practice</div>
+            </div>
+          </button>
+
+          <button
+            onClick={() => navigate('/mba-interview')}
+            className="bg-white hover:bg-yellow-50 transition-colors rounded-xl p-6 shadow flex flex-col items-center gap-4 group"
+          >
+            <div className="w-14 h-14 bg-linear-to-br from-yellow-400 to-orange-600 text-white rounded-lg flex items-center justify-center text-xl group-hover:scale-110 transition-transform">
+              <i className="fas fa-video" />
+            </div>
+            <div className="text-center">
+              <div className="text-lg font-bold text-slate-800">Video Interview</div>
+              <div className="text-sm text-slate-500">Practice MBA Interviews</div>
+            </div>
+          </button>
         </div>
 
         {/* Charts + League */}
