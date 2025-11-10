@@ -1,5 +1,5 @@
 // middleware/authMiddleware.js
-import admin from '../config/firebase.js';
+import {admin} from '../config/firebase.js';
 
 export const authenticateToken = async (req, res, next) => {
   try {

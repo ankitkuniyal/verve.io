@@ -1,5 +1,5 @@
 // controllers/authController.js
-import admin from '../config/firebase.js';
+import {admin} from '../config/firebase.js';
 
 class AuthController {
   // Register new user

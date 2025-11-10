@@ -1,15 +1,25 @@
-// config/firebase.js
+// Firebase Admin SDK setup for server-side functionality
+
 import admin from 'firebase-admin';
 import fs from 'fs';
 
-// Read and parse the service account key JSON file
-const serviceAccount = JSON.parse(
-  fs.readFileSync(new URL('./serviceAccountKey.json', import.meta.url))
-);
+// --- Admin SDK Setup ---
+let app;
 
-// Initialize Firebase Admin SDK
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-});
+try {
+  const serviceAccount = JSON.parse(
+    fs.readFileSync(new URL('./serviceAccountKey.json', import.meta.url))
+  );
 
-export default admin;
+  app = admin.apps.length
+    ? admin.app()
+    : admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+      });
+} catch (e) {
+  console.warn("Admin Firebase SDK not initialized. If needed, check serviceAccountKey.json presence.");
+}
+
+const db = app ? admin.firestore() : null;
+
+export { admin, db };

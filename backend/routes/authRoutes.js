@@ -2,7 +2,7 @@
 import express from 'express';
 import authController from '../controllers/authController.js';
 import { authenticateToken, authorizeRoles } from '../middlewares/authMiddleware.js';
-import admin from '../config/firebase.js';
+import {admin} from '../config/firebase.js';
 
 const router = express.Router();
 

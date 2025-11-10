@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 
 import authRoutes from './routes/authRoutes.js';
 import essayRoutes from './routes/essayRoutes.js';
+import quizRoutes from "./routes/quizRoutes.js"
 dotenv.config();
 
 const app = express();
@@ -19,7 +20,7 @@ app.use(express.urlencoded({ extended: true }));
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/analysis/essay-writing', essayRoutes);
-
+app.use('/api/quiz', quizRoutes)
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
