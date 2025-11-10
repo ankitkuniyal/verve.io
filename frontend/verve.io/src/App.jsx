@@ -4,6 +4,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
+import Dashboard from './components/Dashboard';
+import ResumeParser from './components/ResumeParser';
 import LoadingSpinner from './components/ui/LoadingSpinner';
 
 // Protected Route Component
@@ -34,10 +36,26 @@ function App() {
             path="/dashboard" 
             element={
               <ProtectedRoute>
-                <div>Dashboard</div>
+                <Dashboard />
               </ProtectedRoute>
             } 
           />
+          <Route
+            path="/user/:userid/dashboard"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+            <Route
+              path="/resume-parser"
+              element={
+                <ProtectedRoute>
+                  <ResumeParser />
+                </ProtectedRoute>
+              }
+            />
           <Route path="/" element={<Navigate to="/login" replace />} />
         </Routes>
       </div>
