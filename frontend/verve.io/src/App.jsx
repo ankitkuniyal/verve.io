@@ -21,6 +21,17 @@ const ProtectedRoute = ({ children }) => {
   return user ? children : <Navigate to="/login" replace />;
 };
 
+// Public Route Component (for login/register when already authenticated)
+const PublicRoute = ({ children }) => {
+  const { user, loading } = useAuth();
+  
+  if (loading) {
+    return <LoadingSpinner />;
+  }
+  
+  return !user ? children : <Navigate to="/dashboard" replace />;
+};
+
 function App() {
   const { loading } = useAuth();
 
@@ -32,8 +43,23 @@ function App() {
     <BrowserRouter>
       <div className="App">
         <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
+          
+          <Route 
+            path="/login" 
+            element={
+              <PublicRoute>
+                <Login />
+              </PublicRoute>
+            } 
+          />
+          <Route 
+            path="/register" 
+            element={
+              <PublicRoute>
+                <Register />
+              </PublicRoute>
+            } 
+          />
           <Route 
             path="/dashboard" 
             element={
@@ -50,31 +76,31 @@ function App() {
               </ProtectedRoute>
             }
           />
-            <Route
-              path="/resume-parser"
-              element={
-                <ProtectedRoute>
-                  <ResumeParser />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/essay-writing"
-              element={
-                <ProtectedRoute>
-                  <EssayWritingPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/mba-interview"
-              element={
-                <ProtectedRoute>
-                  <MBAVideoInterview />
-                </ProtectedRoute>
-              }
-            />
-          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route
+            path="/resume-parser"
+            element={
+              <ProtectedRoute>
+                <ResumeParser />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/essay-writing"
+            element={
+              <ProtectedRoute>
+                <EssayWritingPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/mba-interview"
+            element={
+              <ProtectedRoute>
+                <MBAVideoInterview />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </div>
     </BrowserRouter>

@@ -1,15 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Chart from 'chart.js/auto';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
-import api from '../api';
-
-function getGreeting() {
-  const hour = new Date().getHours();
-  if (hour < 12) return 'Good morning';
-  if (hour < 18) return 'Good afternoon';
-  return 'Good evening';
-}
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 const tips = [
   'Consistency beats intensity.',
@@ -17,16 +9,6 @@ const tips = [
   'Small steps every day lead to big results.',
   'Mistakes are proof that you are trying.',
   'Stay curious and keep exploring.',
-  'Believe in yourself and all that you are.',
-  'Success is the sum of small efforts repeated.',
-  'Learning never exhausts the mind.',
-  'Progress, not perfection.',
-  'Your only limit is your mind.',
-  'Dream big, work hard, stay focused.',
-  'The expert in anything was once a beginner.',
-  'Push yourself, because no one else is going to do it for you.',
-  'Don’t watch the clock; do what it does. Keep going.',
-  'You don’t have to be perfect to be amazing.'
 ];
 
 function getTipOfTheDay() {
@@ -37,215 +19,321 @@ function getTipOfTheDay() {
 }
 
 export default function Dashboard() {
-  const { userid } = useParams();
-  const { user: authUser } = useAuth();
-  const navigate = useNavigate();
   const canvasRef = useRef(null);
-
-  const [user, setUser] = useState({});
-  const [editUser, setEditUser] = useState({ password: '' });
+  const [user] = useState({ 
+    name: 'Aaryan', 
+    email: 'aaryan@email.com', 
+    mbaExam: 'CAT' 
+  });
   const [profileEdit, setProfileEdit] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
-
-  const [leagueData, setLeagueData] = useState({ league: { name: 'Loading...' }, progress: 0 });
-
-  const [stats, setStats] = useState({ totalQuizzes: 0, avgScore: 0, chaptersAttempted: 0, streak: 0, weeklyTarget: 7 });
-  const [progressData, setProgressData] = useState([]);
-  const [progressLabels, setProgressLabels] = useState([]);
-  const [recentActivity, setRecentActivity] = useState([]);
-  const [subjects, setSubjects] = useState([]);
-  const [announcements] = useState([
-    { id: 1, title: 'New Quizzes Added!', message: 'Check out the latest quizzes in Science.', date: '2024-06-10' },
-    { id: 2, title: 'Maintenance Notice', message: 'Platform will be down for maintenance on June 12.', date: '2024-06-09' }
-  ]);
 
   const tipOfTheDay = getTipOfTheDay();
-  // Hardcoded greeting for Aaryan
-  const greeting = 'Welcome back';
-  const username = 'Aaryan';
-  const currentDate = new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  const currentDate = new Date().toLocaleDateString('en-US', { 
+    weekday: 'long', 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric' 
+  });
 
-  // resolvedUserId falls back to the authenticated user's id when route param is missing
-  const resolvedUserId = userid || authUser?.id;
+  // Hardcoded stats
+  const stats = {
+    totalQuizzes: 45,
+    avgScore: 78,
+    chaptersAttempted: 12,
+    streak: 7,
+    weeklyTarget: 10,
+    improvement: '+12%',
+    weakestTopic: 'Quantitative Aptitude',
+    strongestTopic: 'Verbal Ability'
+  };
 
-  useEffect(() => {
-    // only fetch when we have a user id (from route or auth)
-    if (resolvedUserId) {
-      fetchUserProfile();
-      fetchSubjects();
+  const leagueData = {
+    league: { 
+      name: 'Silver', 
+      icon: 'fa-medal',
+      color: '#94a3b8'
+    },
+    league_score: 78,
+    next_league: { 
+      name: 'Gold', 
+      min_score: 85 
+    },
+    progress: 65
+  };
+
+  const recommendations = [
+    {
+      id: 1,
+      title: 'Master Time Management',
+      description: 'You spend avg 3.2 mins per question. Aim for 2.5 mins to complete sections faster.',
+      icon: 'fa-clock',
+      color: 'from-blue-500 to-indigo-600'
+    },
+    {
+      id: 2,
+      title: 'Practice Mental Math',
+      description: 'Avoid calculator dependency. Practice speed calculations for Quant section.',
+      icon: 'fa-calculator',
+      color: 'from-purple-500 to-pink-600'
+    },
+    {
+      id: 3,
+      title: 'Revision Strategy Needed',
+      description: 'Revisit incorrect answers. Your revision rate is 40% - increase to 70%.',
+      icon: 'fa-redo',
+      color: 'from-emerald-500 to-teal-600'
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resolvedUserId]);
+  ];
+
+  const mbaNews = [
+    {
+      id: 1,
+      title: 'IIM CAT 2025 Registration Extended',
+      description: 'Last date to register extended to Nov 20th. Don\'t miss out!',
+      date: 'Nov 8, 2025',
+      badge: 'Important'
+    },
+    {
+      id: 2,
+      title: 'New Pattern Alert: XAT 2026',
+      description: 'Decision Making section weightage increased by 10%.',
+      date: 'Nov 5, 2025',
+      badge: 'Update'
+    },
+    {
+      id: 3,
+      title: 'Top B-Schools Placement Stats',
+      description: 'IIM A, B, C report 100% placements with avg package ₹32 LPA.',
+      date: 'Nov 3, 2025',
+      badge: 'News'
+    }
+  ];
 
   useEffect(() => {
-    if (progressData.length && canvasRef.current) {
+    if (canvasRef.current) {
       const ctx = canvasRef.current.getContext('2d');
-      // destroy existing chart if any
-      if (canvasRef.current._chart) canvasRef.current._chart.destroy();
+      if (canvasRef.current._chart) {
+        canvasRef.current._chart.destroy();
+      }
+
+      // Hardcoded graph data - MBA quiz performance
+      const labels = ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5', 'Week 6', 'Week 7', 'Week 8', 'Week 9', 'Week 10', 'Week 11', 'Week 12'];
+      const quantData = [62, 65, 68, 72, 70, 75, 78, 76, 80, 82, 85, 87];
+      const verbalData = [70, 72, 75, 73, 78, 80, 82, 85, 83, 86, 88, 90];
+      const lrdiData = [58, 60, 63, 65, 68, 70, 72, 75, 77, 79, 81, 83];
+
       canvasRef.current._chart = new Chart(ctx, {
         type: 'line',
         data: {
-          labels: progressLabels,
-          datasets: [{
-            label: 'Score (%)',
-            data: progressData,
-            borderColor: '#3b82f6',
-            backgroundColor: 'rgba(59,130,246,0.1)',
-            borderWidth: 3,
-            tension: 0.4,
-            fill: true,
-            pointBackgroundColor: '#3b82f6',
-            pointBorderColor: '#fff',
-            pointBorderWidth: 3,
-            pointRadius: 6,
-            pointHoverRadius: 8,
-          }]
+          labels: labels,
+          datasets: [
+            {
+              label: 'Quantitative Aptitude',
+              data: quantData,
+              borderColor: '#3b82f6',
+              backgroundColor: 'rgba(59, 130, 246, 0.1)',
+              borderWidth: 3,
+              tension: 0.4,
+              fill: true,
+              pointBackgroundColor: '#3b82f6',
+              pointBorderColor: '#fff',
+              pointBorderWidth: 2,
+              pointRadius: 4,
+              pointHoverRadius: 6,
+            },
+            {
+              label: 'Verbal Ability',
+              data: verbalData,
+              borderColor: '#10b981',
+              backgroundColor: 'rgba(16, 185, 129, 0.1)',
+              borderWidth: 3,
+              tension: 0.4,
+              fill: true,
+              pointBackgroundColor: '#10b981',
+              pointBorderColor: '#fff',
+              pointBorderWidth: 2,
+              pointRadius: 4,
+              pointHoverRadius: 6,
+            },
+            {
+              label: 'LRDI',
+              data: lrdiData,
+              borderColor: '#f59e0b',
+              backgroundColor: 'rgba(245, 158, 11, 0.1)',
+              borderWidth: 3,
+              tension: 0.4,
+              fill: true,
+              pointBackgroundColor: '#f59e0b',
+              pointBorderColor: '#fff',
+              pointBorderWidth: 2,
+              pointRadius: 4,
+              pointHoverRadius: 6,
+            }
+          ]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
           plugins: {
-            legend: { display: false },
+            legend: { 
+              display: true,
+              position: 'top',
+              labels: {
+                usePointStyle: true,
+                padding: 15,
+                font: { size: 12, weight: '600' }
+              }
+            },
             tooltip: {
+              backgroundColor: 'rgba(0, 0, 0, 0.8)',
+              padding: 12,
+              titleColor: '#fff',
+              bodyColor: '#fff',
+              borderColor: '#0ea5e9',
+              borderWidth: 1,
               callbacks: {
-                title: (context) => 'Date: ' + context[0].label,
-                label: (context) => 'Score: ' + context.parsed.y + '%'
+                label: (context) => `${context.dataset.label}: ${context.parsed.y}%`
               }
             }
           },
           scales: {
-            x: { grid: { display: false }, ticks: { color: '#6b7280' }, title: { display: true, text: 'Quiz Submission Date', color: '#6b7280' } },
-            y: { beginAtZero: true, max: 100, ticks: { color: '#6b7280', callback: (v) => v + '%' }, title: { display: true, text: 'Score (%)', color: '#6b7280' } }
+            x: { 
+              grid: { display: false },
+              ticks: { color: '#64748b', font: { size: 11 } }
+            },
+            y: { 
+              beginAtZero: true,
+              max: 100,
+              grid: { color: '#e2e8f0' },
+              ticks: { 
+                color: '#64748b',
+                font: { size: 11 },
+                callback: (v) => v + '%'
+              }
+            }
           }
         }
       });
     }
-  }, [progressData, progressLabels]);
+  }, []);
 
-  async function fetchLeague(payload) {
-    try {
-      const res = await api.post('/auth/league', payload);
-      setLeagueData(res.data);
-    } catch (e) {
-      console.error('Failed to fetch league', e);
-    }
-  }
-
-  async function fetchUserProfile() {
-    try {
-      setIsLoading(true);
-      setError(null);
-      const res = await api.get(`auth/profile/${resolvedUserId}`);
-      setUser(res.data);
-    } catch (e) {
-      setError('Failed to load user profile');
-      console.error('Error fetching user profile:', e);
-    } finally {
-      setIsLoading(false);
-      // after profile, fetch stats
-      fetchUserStats();
-    }
-  }
-
-  async function saveProfile(e) {
-    e.preventDefault();
-    try {
-      setIsLoading(true);
-      setError(null);
-      const payload = { name: editUser.name, qualification: editUser.qualification };
-      if (editUser.password && editUser.password.trim() !== '') payload.password = editUser.password;
-      await api.put(`/auth/profile/${resolvedUserId}`, payload);
-      await fetchUserProfile();
-      setProfileEdit(false);
-    } catch (e) {
-      setError('Failed to update profile');
-      console.error('Error updating profile:', e);
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  function logout() {
+  const handleLogout = () => {
     localStorage.removeItem('token');
-    navigate('/login');
-  }
+    window.location.href = '/login';
+  };
 
-  function getScoreClass(score) {
-    if (score >= 90) return 'bg-emerald-100 text-emerald-800';
-    if (score >= 80) return 'bg-sky-100 text-sky-800';
-    if (score >= 70) return 'bg-amber-100 text-amber-800';
-    return 'bg-rose-100 text-rose-800';
-  }
-
-  async function fetchUserStats() {
-    try {
-      const [quizzesRes, , resultsRes] = await Promise.all([
-        api.get('/auth/quizzes'),
-        api.get('/auth/subjects'),
-        api.get('/auth/results'),
-      ]);
-
-      const quizzes = quizzesRes.data.quizzes || [];
-      const quizIdToChapterId = Object.fromEntries(quizzes.map(q => [Number(q.id), q.chapter_id]));
-
-  const userResults = (resultsRes.data.results || []).filter(r => Number(r.user_id) === Number(resolvedUserId)).sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
-
-      let totalScore = 0; let totalQuizzes = 0; const chapterIds = new Set(); const dateSet = new Set();
-      const progressScores = []; const progressLabelList = []; const activityList = [];
-
-      for (let i=0;i<userResults.length;i++){
-        const r = userResults[i]; const score = r.score||0; totalScore+=score; totalQuizzes++;
-        const chapterId = quizIdToChapterId[Number(r.quiz_id)]; if (chapterId!==undefined && chapterId!==null) chapterIds.add(chapterId);
-        if (r.created_at) dateSet.add(new Date(r.created_at).toDateString());
-        progressScores.push(score);
-        if (r.created_at){ const date = new Date(r.created_at); progressLabelList.push(`${date.getDate()} ${date.toLocaleString('default',{month:'long'})}`); } else progressLabelList.push('');
-      }
-
-      // streak calculation
-      const uniqueDates = Array.from(dateSet).map(d=>new Date(d)).sort((a,b)=>a-b);
-      let streak = 0;
-      if (uniqueDates.length>0){
-        let current = new Date(); current.setHours(0,0,0,0);
-        for (let i=uniqueDates.length-1;i>=0;i--){
-          const date = uniqueDates[i]; if (date.getTime()===current.getTime()){ streak++; current.setDate(current.getDate()-1); }
-          else if (date.getTime() < current.getTime()){ if (date.getTime() === current.getTime() - 24*60*60*1000){ streak++; current.setDate(current.getDate()-1); } else break; }
-        }
-      }
-
-      for (let i=Math.max(0,userResults.length-5); i<userResults.length; i++){ const r = userResults[i]; activityList.push({ id: r.id||i, quizId: r.quiz_id, quizTitle: r.quiz_title||'Quiz', score: r.score, date: r.created_at? r.created_at.slice(0,10):'' }); }
-      activityList.reverse();
-
-      setStats({ totalQuizzes, avgScore: totalQuizzes? Math.round(totalScore/totalQuizzes):0, chaptersAttempted: chapterIds.size, streak, weeklyTarget:7 });
-      setProgressData(progressScores); setProgressLabels(progressLabelList); setRecentActivity(activityList);
-
-  // fetch league (use freshly computed totals)
-  await fetchLeague({ avg_score: totalQuizzes ? Math.round(totalScore/totalQuizzes) : 0, streak, quizzes_submitted: totalQuizzes });
-
-    } catch (e) {
-      console.error('Failed to fetch user stats', e);
+  const downloadReport = async () => {
+  try {
+    // Get the chart element
+    const chartElement = canvasRef.current;
+    
+    if (!chartElement) {
+      alert('Chart not found!');
+      return;
     }
-  }
 
-  async function fetchSubjects(){
-    try{
-      const res = await api.get('/subjects/with-details');
-      const allSubjects = (res.data || []).map(subj=>({ id: subj.id, name: subj.name, description: subj.description, chapters: Array.isArray(subj.chapters)? subj.chapters.length: 0, quizzes: Array.isArray(subj.chapters)? subj.chapters.reduce((sum,ch)=>sum+(Array.isArray(ch.quizzes)?ch.quizzes.length:0),0):0, icon: 'fas fa-book', color: '#00838f' }));
-      setSubjects(allSubjects.slice(0,2));
-    }catch(e){ console.error('Failed to fetch subjects', e); setSubjects([]); }
+    // Create a temporary container for the report
+    const reportContainer = document.createElement('div');
+    reportContainer.style.cssText = `
+      position: fixed;
+      top: -1000px;
+      left: -1000px;
+      width: 800px;
+      padding: 20px;
+      background: white;
+      z-index: 10000;
+    `;
+
+    // Create report content
+    reportContainer.innerHTML = `
+      <div style="font-family: Arial, sans-serif;">
+        <div style="text-align: center; margin-bottom: 20px; border-bottom: 2px solid #3b82f6; padding-bottom: 10px;">
+          <h1 style="color: #1e293b; margin: 0;">Performance Report</h1>
+          <p style="color: #64748b; margin: 5px 0;">Generated on ${new Date().toLocaleDateString()}</p>
+          <p style="color: #64748b; margin: 0;">Student: ${user.name} | Target Exam: ${user.mbaExam}</p>
+        </div>
+        
+        <div style="margin-bottom: 20px;">
+          <h2 style="color: #334155; border-left: 4px solid #3b82f6; padding-left: 10px;">Progress Overview</h2>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 10px;">
+            <div style="background: #f8fafc; padding: 10px; border-radius: 5px;">
+              <strong>Total Quizzes:</strong> ${stats.totalQuizzes}
+            </div>
+            <div style="background: #f8fafc; padding: 10px; border-radius: 5px;">
+              <strong>Average Score:</strong> ${stats.avgScore}%
+            </div>
+            <div style="background: #f8fafc; padding: 10px; border-radius: 5px;">
+              <strong>Current Streak:</strong> ${stats.streak} days
+            </div>
+            <div style="background: #f8fafc; padding: 10px; border-radius: 5px;">
+              <strong>Improvement:</strong> ${stats.improvement}
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+          <h2 style="color: #334155; border-left: 4px solid #10b981; padding-left: 10px;">Performance Insights</h2>
+          <div style="background: #f0fdf4; padding: 15px; border-radius: 5px; margin-top: 10px;">
+            <strong>Strongest Topic:</strong> ${stats.strongestTopic}
+          </div>
+          <div style="background: #fef2f2; padding: 15px; border-radius: 5px; margin-top: 10px;">
+            <strong>Area for Improvement:</strong> ${stats.weakestTopic}
+          </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 30px; color: #64748b; font-size: 12px;">
+          Report generated by MBA Prep Platform
+        </div>
+      </div>
+    `;
+
+    // Add the chart image
+    const chartCanvas = await html2canvas(chartElement);
+    const chartImage = chartCanvas.toDataURL('image/png');
+    
+    const chartImg = document.createElement('img');
+    chartImg.src = chartImage;
+    chartImg.style.width = '100%';
+    chartImg.style.marginTop = '20px';
+    chartImg.style.border = '1px solid #e2e8f0';
+    chartImg.style.borderRadius = '5px';
+    
+    reportContainer.querySelector('div').appendChild(chartImg);
+    document.body.appendChild(reportContainer);
+
+    // Generate PDF
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const reportCanvas = await html2canvas(reportContainer);
+    const imgData = reportCanvas.toDataURL('image/png');
+    
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = (reportCanvas.height * pdfWidth) / reportCanvas.width;
+    
+    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+    pdf.save('Performance_Report.pdf');
+
+    // Clean up
+    document.body.removeChild(reportContainer);
+
+  } catch (error) {
+    console.error('Error generating PDF:', error);
+    alert('Error generating report. Please try again.');
   }
+};
 
   return (
     <section className="bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen py-8">
       <div className="max-w-7xl mx-auto px-6">
-        <div className="mb-12">
+        <div className="mb-10">
           <div className="flex flex-col lg:flex-row gap-6 items-start">
             <div className="flex-1">
-              <h1 className="text-4xl font-extrabold text-slate-800">Welcome back, Aaryan! 👋</h1>
+              <h1 className="text-4xl font-black text-slate-900 tracking-tight">
+                Welcome back, Aaryan! 👋
+              </h1>
               <p className="text-lg text-slate-500 mt-2">Ready to continue learning?</p>
 
-              <div className="mt-6 bg-yellow-100 border-l-4 border-yellow-400 rounded-xl p-4 flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-yellow-500 text-white flex items-center justify-center">
+              <div className="mt-6 bg-gradient-to-r from-yellow-50 to-amber-50 border-l-4 border-yellow-400 rounded-xl p-4 flex items-center gap-4 shadow-sm">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-yellow-400 to-amber-500 text-white flex items-center justify-center text-xl">
                   <i className="fas fa-lightbulb"></i>
                 </div>
                 <div>
@@ -254,215 +342,410 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              <div className="mt-4 text-slate-500 flex items-center gap-2"><i className="fas fa-calendar-alt" />{currentDate}</div>
-              {isLoading && (
-                <div className="mt-4 p-3 bg-slate-100 text-slate-700 rounded">Loading...</div>
-              )}
-              {error && (
-                <div className="mt-4 p-3 bg-rose-100 text-rose-700 rounded">{error}</div>
-              )}
+              <div className="mt-4 text-slate-500 flex items-center gap-2">
+                <i className="fas fa-calendar-alt" />
+                {currentDate}
+              </div>
             </div>
 
-            <div className="w-full lg:w-1/3">
-              <div className="bg-white rounded-2xl shadow-lg p-6">
-                {!profileEdit ? (
-                  <div className="flex items-center gap-4">
-                    <div className="text-4xl text-sky-500"><i className="fas fa-user-circle"></i></div>
-                    <div className="flex-1">
-                      <div className="font-semibold text-slate-800">{user.name}</div>
-                      <div className="text-sm text-slate-500">{user.email}</div>
-                      <div className="inline-block mt-2 bg-sky-600 text-white px-3 py-1 rounded-full text-sm">{user.qualification}</div>
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      <button onClick={()=>{ setEditUser({ ...user, password: '' }); setProfileEdit(true); }} className="w-9 h-9 bg-gray-100 rounded-md flex items-center justify-center hover:bg-sky-500 hover:text-white"><i className="fas fa-edit" /></button>
-                      <button onClick={logout} title="Logout" className="w-9 h-9 bg-gray-100 rounded-md flex items-center justify-center hover:bg-red-500 hover:text-white mt-2"><i className="fas fa-sign-out-alt" /></button>
+            <div className="w-full lg:w-80">
+              <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-100">
+                <div className="flex items-center gap-4">
+                  <div className="text-6xl text-sky-500">
+                    <i className="fas fa-user-circle"></i>
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-bold text-slate-800 text-xl">{user.name}</div>
+                    <div className="text-base text-slate-500">{user.email}</div>
+                    <div className="inline-block mt-2 bg-sky-600 text-white px-4 py-2 rounded-full text-sm font-medium">
+                      {user.mbaExam} Aspirant
                     </div>
                   </div>
-                ) : (
-                  <form onSubmit={saveProfile} className="space-y-3">
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700">Name</label>
-                      <input value={editUser.name||''} onChange={(e)=>setEditUser({...editUser, name: e.target.value})} className="mt-1 block w-full border border-slate-200 rounded-md p-2" required />
+                </div>
+                
+                <div className="flex gap-2 mt-4">
+                  <button 
+                    onClick={() => setProfileEdit(true)}
+                    title="Settings"
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg transition-all shadow-sm hover:shadow flex items-center justify-center text-sm"
+                  >
+                    <i className="fas fa-cog" />
+                    <span>Settings</span>
+                  </button>
+                  <button 
+                    onClick={handleLogout}
+                    title="Logout"
+                    className="flex-1 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg transition-all shadow-sm hover:shadow flex items-center justify-center text-sm"
+                  >
+                    <i className="fas fa-sign-out-alt" />
+                    <span>Logout</span>
+                  </button>
+                </div>
+
+                {profileEdit && (
+                  <>
+                    <div 
+                      className="fixed inset-0 bg-black bg-opacity-50 z-40"
+                      onClick={() => setProfileEdit(false)}
+                    />
+                    <div className="fixed inset-x-4 top-20 md:inset-x-1/4 z-50 max-w-lg mx-auto">
+                      <div className="bg-white rounded-2xl shadow-2xl">
+                        <div className="p-6">
+                          <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-xl font-bold text-slate-800">Settings</h3>
+                            <button 
+                              onClick={() => setProfileEdit(false)}
+                              className="text-slate-400 hover:text-slate-600 text-xl"
+                            >
+                              <i className="fas fa-times" />
+                            </button>
+                          </div>
+
+                          <div className="space-y-4">
+                            <div>
+                              <label className="block text-sm font-semibold text-slate-700 mb-2">Name</label>
+                              <input 
+                                value={user.name} 
+                                className="w-full bg-white border-2 border-slate-200 rounded-lg p-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all" 
+                                readOnly
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-semibold text-slate-700 mb-2">Email</label>
+                              <input 
+                                type="email"
+                                value={user.email}
+                                className="w-full bg-white border-2 border-slate-200 rounded-lg p-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all" 
+                                readOnly
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-semibold text-slate-700 mb-2">Target Exam</label>
+                              <div className="grid grid-cols-3 gap-2">
+                                {['CAT', 'XAT', 'CMAT', 'NMAT', 'MAT', 'ATMA'].map((exam) => (
+                                  <button
+                                    key={exam}
+                                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-all
+                                      ${user.mbaExam === exam 
+                                        ? 'bg-blue-600 text-white shadow-md' 
+                                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+                                  >
+                                    {exam}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex gap-3 mt-6">
+                            <button 
+                              onClick={() => setProfileEdit(false)} 
+                              className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-lg font-medium transition-all"
+                            >
+                              Cancel
+                            </button>
+                            <button 
+                              onClick={() => setProfileEdit(false)} 
+                              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-medium transition-all shadow-sm"
+                            >
+                              Save Changes
+                            </button>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700">Qualification</label>
-                      <input value={editUser.qualification||''} onChange={(e)=>setEditUser({...editUser, qualification: e.target.value})} className="mt-1 block w-full border border-slate-200 rounded-md p-2" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700">New Password</label>
-                      <input id="edit-password" value={editUser.password||''} onChange={(e)=>setEditUser({...editUser, password: e.target.value})} type="password" autoComplete="new-password" placeholder="Leave blank to keep current password" className="mt-1 block w-full border border-slate-200 rounded-md p-2" />
-                      <small className="text-slate-400">Leave blank to keep your current password.</small>
-                    </div>
-                    <div className="flex gap-3">
-                      <button type="button" onClick={()=>{ setProfileEdit(false); setError(null); }} className="flex-1 bg-gray-100 py-2 rounded-md">Cancel</button>
-                      <button type="submit" className="flex-1 bg-sky-600 text-white py-2 rounded-md">Save Changes</button>
-                    </div>
-                  </form>
+                  </>
                 )}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Navigation Buttons */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <button
-            onClick={() => navigate('/resume-parser')}
-            className="bg-white hover:bg-sky-50 transition-colors rounded-xl p-6 shadow flex flex-col items-center gap-4 group"
-          >
-            <div className="w-14 h-14 bg-linear-to-br from-sky-500 to-indigo-700 text-white rounded-lg flex items-center justify-center text-xl group-hover:scale-110 transition-transform">
+        {/* Navigation Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-10">
+          <a href="/resume-parser" className="group bg-white hover:shadow-xl transition-all duration-300 rounded-2xl p-6 shadow-md border border-slate-100 hover:scale-105 cursor-pointer block">
+            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center text-white text-2xl mb-4 group-hover:scale-110 transition-transform shadow-lg">
               <i className="fas fa-file-alt" />
             </div>
-            <div className="text-center">
-              <div className="text-lg font-bold text-slate-800">Resume Parser</div>
-              <div className="text-sm text-slate-500">AI-Powered Resume Analysis</div>
+            <div className="text-left">
+              <div className="text-lg font-bold text-slate-800 mb-1">Resume Parser</div>
+              <div className="text-sm text-slate-500">AI-Powered Analysis</div>
             </div>
-          </button>
+          </a>
 
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="bg-white hover:bg-cyan-50 transition-colors rounded-xl p-6 shadow flex flex-col items-center gap-4 group"
-          >
-            <div className="w-14 h-14 bg-linear-to-br from-cyan-400 to-sky-700 text-white rounded-lg flex items-center justify-center text-xl group-hover:scale-110 transition-transform">
+          <div className="group bg-white hover:shadow-xl transition-all duration-300 rounded-2xl p-6 shadow-md border border-slate-100 hover:scale-105 cursor-pointer">
+            <div className="w-16 h-16 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl flex items-center justify-center text-white text-2xl mb-4 group-hover:scale-110 transition-transform shadow-lg">
               <i className="fas fa-brain" />
             </div>
-            <div className="text-center">
-              <div className="text-lg font-bold text-slate-800">AI Quiz</div>
+            <div className="text-left">
+              <div className="text-lg font-bold text-slate-800 mb-1">AI Quiz</div>
               <div className="text-sm text-slate-500">Interactive Learning</div>
             </div>
-          </button>
+          </div>
 
-          <button
-            onClick={() => navigate('/essay-writing')}
-            className="bg-white hover:bg-emerald-50 transition-colors rounded-xl p-6 shadow flex flex-col items-center gap-4 group"
-          >
-            <div className="w-14 h-14 bg-linear-to-br from-emerald-400 to-emerald-600 text-white rounded-lg flex items-center justify-center text-xl group-hover:scale-110 transition-transform">
+          <a href="/essay-writing" className="group bg-white hover:shadow-xl transition-all duration-300 rounded-2xl p-6 shadow-md border border-slate-100 hover:scale-105 cursor-pointer block">
+            <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-green-600 rounded-2xl flex items-center justify-center text-white text-2xl mb-4 group-hover:scale-110 transition-transform shadow-lg">
               <i className="fas fa-pen-fancy" />
             </div>
-            <div className="text-center">
-              <div className="text-lg font-bold text-slate-800">Written Test</div>
-              <div className="text-sm text-slate-500">Essay Writing Practice</div>
+            <div className="text-left">
+              <div className="text-lg font-bold text-slate-800 mb-1">Written Test</div>
+              <div className="text-sm text-slate-500">Essay Practice</div>
             </div>
-          </button>
+          </a>
 
-          <button
-            onClick={() => navigate('/mba-interview')}
-            className="bg-white hover:bg-yellow-50 transition-colors rounded-xl p-6 shadow flex flex-col items-center gap-4 group"
-          >
-            <div className="w-14 h-14 bg-linear-to-br from-yellow-400 to-orange-600 text-white rounded-lg flex items-center justify-center text-xl group-hover:scale-110 transition-transform">
+          <a href="/mba-interview" className="group bg-white hover:shadow-xl transition-all duration-300 rounded-2xl p-6 shadow-md border border-slate-100 hover:scale-105 cursor-pointer block">
+            <div className="w-16 h-16 bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl flex items-center justify-center text-white text-2xl mb-4 group-hover:scale-110 transition-transform shadow-lg">
               <i className="fas fa-video" />
             </div>
-            <div className="text-center">
-              <div className="text-lg font-bold text-slate-800">Video Interview</div>
-              <div className="text-sm text-slate-500">Practice MBA Interviews</div>
+            <div className="text-left">
+              <div className="text-lg font-bold text-slate-800 mb-1">Video Interview</div>
+              <div className="text-sm text-slate-500">Practice Interviews</div>
             </div>
-          </button>
+          </a>
         </div>
 
-        {/* Charts + League */}
-        <div className="grid lg:grid-cols-3 gap-6 mb-8">
-          <div className="lg:col-span-2 bg-white rounded-xl shadow p-6">
-            <div className="mb-3">
-              <h5 className="font-semibold text-slate-800"><i className="fas fa-chart-line mr-2" /> Progress Trend</h5>
-              <p className="text-sm text-slate-500">Your performance over all quizzes submitted</p>
-            </div>
-            <div className="h-72">
+        {/* Progress Trend + League & Reports */}
+        <div className="grid lg:grid-cols-3 gap-6 mb-10">
+          <div className="lg:col-span-2 bg-white rounded-2xl shadow-lg p-6 border border-slate-100">
+            <div className="flex justify-between items-start mb-5">
+  <div>
+    <h5 className="font-bold text-slate-800 text-lg flex items-center gap-2">
+      <i className="fas fa-chart-line text-blue-600" />
+      Section-wise Progress Trend
+    </h5>
+    <p className="text-sm text-slate-500 mt-1">Performance across Quant, Verbal, and LRDI over 12 weeks</p>
+  </div>
+  <button 
+  onClick={downloadReport}
+  className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-all shadow-sm hover:shadow flex items-center gap-2 text-sm"
+>
+  <i className="fas fa-download" />
+  Download Report
+</button>
+</div>
+            
+            <div className="h-80">
               <canvas ref={canvasRef} />
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow p-6">
-            {leagueData && leagueData.league ? (
-              <div>
-                <div className="mb-3">
-                  <h5 className="font-semibold text-slate-800"><i className="fas fa-trophy mr-2" /> Your League</h5>
-                  <p className="text-sm text-slate-500">Progress through leagues by improving your scores</p>
-                </div>
-                <div className="p-4 rounded-lg" style={{ background: `linear-gradient(135deg, ${leagueData.league.color||'#3b82f6'} 0%, rgba(0,0,0,0.1) 100%)`, color: 'white' }}>
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center"><i className={`fas ${leagueData.league.icon}`} /></div>
-                    <div>
-                      <div className="font-bold text-lg">{leagueData.league.name} League</div>
-                      <div className="text-sm opacity-90"><i className="fas fa-star mr-1" />{Math.floor(leagueData.league_score||0)}% League Score</div>
-                    </div>
+          <div className="space-y-6">
+            {/* League Card */}
+            <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-100">
+              <h5 className="font-bold text-slate-800 text-lg flex items-center gap-2 mb-4">
+                <i className="fas fa-trophy text-amber-500" />
+                Your League
+              </h5>
+              <div className="p-5 rounded-xl bg-gradient-to-br from-slate-500 via-slate-600 to-slate-700 text-white shadow-lg relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-5 rounded-full -mr-16 -mt-16"></div>
+                <div className="absolute bottom-0 left-0 w-24 h-24 bg-white opacity-5 rounded-full -ml-12 -mb-12"></div>
+                
+                <div className="relative flex items-center gap-3 mb-4">
+                  <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-3xl border-2 border-white/30">
+                    <i className="fas fa-medal" />
                   </div>
-
-                  {leagueData.next_league ? (
-                    <div className="mt-4 bg-white/10 p-3 rounded">
-                      <div className="flex justify-between text-sm mb-2"><span>Next: {leagueData.next_league.name}</span><span>Starts from {leagueData.next_league.min_score}%</span></div>
-                      <div className="w-full h-3 bg-slate-200 rounded overflow-hidden">
-                        <div className="h-3 bg-white rounded" style={{ width: `${leagueData.progress}%` }} />
-                      </div>
-                      <div className="text-right text-sm mt-2">{leagueData.progress}%</div>
-                    </div>
-                  ) : (
-                    <div className="mt-4 text-center bg-white/10 p-3 rounded"> <i className="fas fa-crown mr-2" /> You've reached the highest league!</div>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="text-center">Loading League...</div>
-            )}
-          </div>
-        </div>
-
-        {/* Explore Subjects */}
-        <div className="bg-white rounded-xl p-6 shadow mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h5 className="text-teal-700 font-semibold"><i className="fas fa-layer-group mr-2" /> Explore Subjects</h5>
-              <p className="text-sm text-teal-700">Browse all your available subjects and chapters</p>
-            </div>
-            <a className="bg-linear-to-br from-teal-600 to-cyan-500 text-white px-4 py-2 rounded" href={`/user/subjects/${resolvedUserId}`}>Explore All <i className="fas fa-arrow-right ml-2" /></a>
-          </div>
-          <div className="grid md:grid-cols-2 gap-4">
-            {subjects.map(s => (
-              <div key={s.id} className="rounded-lg p-4 bg-linear-to-br from-cyan-50 to-sky-50">
-                <div className="text-2xl text-teal-700 mb-2"><i className={s.icon} /></div>
-                <div className="font-semibold text-teal-700">{s.name}</div>
-                <div className="text-sm text-slate-500">{s.chapters} chapters · {s.quizzes} quizzes</div>
-                <a className="mt-3 inline-block bg-linear-to-br from-teal-600 to-cyan-500 text-white px-3 py-2 rounded" href={`/subjects/${s.id}/chapters`}>Explore <i className="fas fa-arrow-right ml-2" /></a>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Recent Activity */}
-        <div className="bg-white rounded-xl p-6 shadow mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h5 className="font-semibold text-slate-800">Recent Activity</h5>
-            <div className="text-sm text-slate-500">Last 5 submissions</div>
-          </div>
-          <div className="space-y-3">
-            {recentActivity.length === 0 && <div className="text-sm text-slate-400">No recent activity.</div>}
-            {recentActivity.map(item => (
-              <div key={item.id} className="flex items-center justify-between bg-slate-50 p-3 rounded">
-                <div>
-                  <div className="font-medium text-slate-800">{item.quizTitle}</div>
-                  <div className="text-xs text-slate-500">{item.date} • Chapter {item.chapterName || item.quizId}</div>
-                </div>
-                <div className={`px-3 py-1 rounded-full text-sm font-semibold ${getScoreClass(item.score)}`}>{item.score}%</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Announcements */}
-        <div className="grid lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-1 bg-white rounded-xl p-6 shadow">
-            <h6 className="font-semibold text-slate-800"><i className="fas fa-bullhorn mr-2" /> Latest Updates</h6>
-            <div className="mt-4 space-y-4">
-              {announcements.map(a=> (
-                <div key={a.id} className="flex gap-3 bg-sky-50 p-3 rounded">
-                  <div className="w-10 h-10 bg-sky-500 text-white rounded-full flex items-center justify-center"><i className="fas fa-info-circle" /></div>
                   <div>
-                    <div className="font-semibold text-slate-800">{a.title}</div>
-                    <div className="text-sm text-slate-500">{a.message}</div>
-                    <div className="text-xs text-slate-400">{a.date}</div>
+                    <div className="font-bold text-2xl">{leagueData.league.name} League</div>
+                    <div className="text-sm opacity-90 flex items-center gap-1">
+                      <i className="fas fa-star" />
+                      {Math.floor(leagueData.league_score)}% League Score
+                    </div>
                   </div>
                 </div>
-              ))}
+
+                <div className="relative bg-white/15 backdrop-blur-sm p-4 rounded-lg border border-white/20">
+                  <div className="flex justify-between text-sm mb-2 font-medium">
+                    <span>Next: {leagueData.next_league.name} League</span>
+                    <span>{leagueData.next_league.min_score}%</span>
+                  </div>
+                  <div className="w-full h-3 bg-slate-800/40 rounded-full overflow-hidden">
+                    <div 
+                      className="h-3 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full transition-all duration-500 shadow-lg"
+                      style={{ width: `${leagueData.progress}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between items-center mt-2">
+                    <div className="text-xs opacity-90">{leagueData.progress}% Complete</div>
+                    <div className="text-xs bg-white/20 px-2 py-1 rounded-full">
+                      {leagueData.next_league.min_score - leagueData.league_score}% to go
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
+
+            {/* Stats Card */}
+            <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-100">
+              <h5 className="font-bold text-slate-800 text-lg flex items-center gap-2 mb-4">
+                <i className="fas fa-chart-bar text-blue-600" />
+                Quick Stats
+              </h5>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+                  <span className="text-sm font-medium text-slate-700">Improvement</span>
+                  <span className="text-lg font-bold text-green-600">{stats.improvement}</span>
+                </div>
+                <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
+                  <span className="text-sm font-medium text-slate-700">Current Streak</span>
+                  <span className="text-lg font-bold text-green-600">{stats.streak} days</span>
+                </div>
+                <div className="flex justify-between items-center p-3 bg-amber-50 rounded-lg">
+                  <span className="text-sm font-medium text-slate-700">Total Quizzes</span>
+                  <span className="text-lg font-bold text-amber-600">{stats.totalQuizzes}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Performance Insights */}
+        <div className="grid lg:grid-cols-2 gap-6 mb-10">
+          <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-100">
+            <h5 className="font-bold text-slate-800 text-lg flex items-center gap-2 mb-4">
+              <i className="fas fa-bullseye text-red-600" />
+              Areas to Improve
+            </h5>
+            <div className="space-y-3">
+              <div className="p-4 bg-red-50 rounded-lg border-l-4 border-red-500">
+                <div className="font-semibold text-slate-800">Weakest Topic</div>
+                <div className="text-sm text-slate-600 mt-1">{stats.weakestTopic}</div>
+                <div className="text-xs text-slate-500 mt-2">Focus on this area for better results</div>
+              </div>
+              <div className="p-4 bg-green-50 rounded-lg border-l-4 border-green-500">
+                <div className="font-semibold text-slate-800">Strongest Topic</div>
+                <div className="text-sm text-slate-600 mt-1">{stats.strongestTopic}</div>
+                <div className="text-xs text-slate-500 mt-2">Keep up the excellent work!</div>
+              </div>
+              <div className="p-4 bg-green-50 rounded-lg border-l-4 border-green-500">
+                <div className="font-semibold text-slate-800">Improvement</div>
+                <div className="text-sm text-slate-600 mt-1">{stats.strongestTopic}</div>
+                <div className="text-xs text-slate-500 mt-2">Best Enthusiasm!</div>
+              </div>
+              <div className="p-4 bg-red-50 rounded-lg border-l-4 border-red-500">
+                <div className="font-semibold text-slate-800">Weak Topic</div>
+                <div className="text-sm text-slate-600 mt-1">{stats.weakestTopic}</div>
+                <div className="text-xs text-slate-500 mt-2">Focus on formulas and logic!</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-100">
+            <h5 className="font-bold text-slate-800 text-lg flex items-center gap-2 mb-4">
+              <i className="fas fa-chart-pie text-purple-600" />
+              Weekly Progress
+            </h5>
+            <div className="space-y-4">
+              <div>
+                <div className="flex justify-between text-sm mb-2">
+                  <span className="text-slate-600">Quizzes This Week</span>
+                  <span className="font-bold text-slate-800">{stats.streak}/{stats.weeklyTarget}</span>
+                </div>
+                <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
+                  <div 
+                    className="h-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full transition-all"
+                    style={{ width: `${(stats.streak / stats.weeklyTarget) * 100}%` }}
+                  />
+                </div>
+              </div>
+
+              <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border border-blue-100">
+                <div className="text-xs font-semibold text-blue-700 mb-2">STUDY TIME THIS WEEK</div>
+                <div className="text-2xl font-bold text-blue-900">12.5 hrs</div>
+                <div className="text-xs text-blue-600 mt-1">+2.5 hrs from last week</div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3 bg-purple-50 rounded-lg text-center border border-purple-100">
+                  <div className="text-2xl font-bold text-purple-600">{stats.avgScore}%</div>
+                  <div className="text-xs text-slate-600 mt-1">Avg Score</div>
+                </div>
+                <div className="p-3 bg-blue-50 rounded-lg text-center border border-blue-100">
+                  <div className="text-2xl font-bold text-blue-600">{stats.chaptersAttempted}</div>
+                  <div className="text-xs text-slate-600 mt-1">Chapters</div>
+                </div>
+              </div>
+
+              <div className="p-3 bg-green-50 rounded-lg border border-green-100">
+                <div className="flex justify-between items-center">
+                  <div className="text-xs font-semibold text-green-700">ACCURACY RATE</div>
+                  <div className="text-lg font-bold text-green-700">82%</div>
+                </div>
+                <div className="w-full h-2 bg-green-100 rounded-full overflow-hidden mt-2">
+                  <div className="h-2 bg-green-500 rounded-full" style={{ width: '82%' }} />
+                </div>
+              </div>
+
+              <div className="p-3 bg-amber-50 rounded-lg border border-amber-100">
+                <div className="flex justify-between items-center">
+                  <div className="text-xs font-semibold text-amber-700">AVG TIME/QUESTION</div>
+                  <div className="text-lg font-bold text-amber-700">2.8 min</div>
+                </div>
+                <div className="text-xs text-amber-600 mt-1">Target: 2.5 min</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Recommendations */}
+        <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-100 mb-10">
+          <div className="flex items-center justify-between mb-5">
+            <div>
+              <h5 className="font-bold text-slate-800 text-lg flex items-center gap-2">
+                <i className="fas fa-lightbulb text-yellow-500" />
+                Personalized Recommendations
+              </h5>
+              <p className="text-sm text-slate-500 mt-1">Based on your recent performance</p>
+            </div>
+          </div>
+          <div className="grid md:grid-cols-3 gap-4">
+            {recommendations.map(rec => (
+              <div key={rec.id} className="group p-5 rounded-xl bg-gradient-to-br hover:shadow-lg transition-all border border-slate-100 hover:scale-105 duration-300">
+                <div className={`w-12 h-12 bg-gradient-to-br ${rec.color} rounded-xl flex items-center justify-center text-white text-xl mb-3 group-hover:scale-110 transition-transform`}>
+                  <i className={`fas ${rec.icon}`} />
+                </div>
+                <div className="font-bold text-slate-800 mb-2">{rec.title}</div>
+                <div className="text-sm text-slate-600">{rec.description}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* MBA News & Updates */}
+        <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-100">
+          <div className="flex items-center justify-between mb-5">
+            <h5 className="font-bold text-slate-800 text-lg flex items-center gap-2">
+              <i className="fas fa-newspaper text-blue-600" />
+              MBA News & Updates
+            </h5>
+            <span className="text-xs text-slate-500 bg-slate-100 px-3 py-1 rounded-full">Latest</span>
+          </div>
+          <div className="space-y-4">
+            {mbaNews.map(news => (
+              <div key={news.id} className="flex gap-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl hover:shadow-md transition-all border border-blue-100">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-xl flex items-center justify-center flex-shrink-0">
+                  <i className="fas fa-bullhorn text-lg" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-start justify-between gap-2 mb-1">
+                    <div className="font-bold text-slate-800">{news.title}</div>
+                    <span className={`text-xs px-2 py-1 rounded-full flex-shrink-0 ${
+                      news.badge === 'Important' ? 'bg-red-100 text-red-700' :
+                      news.badge === 'Update' ? 'bg-blue-100 text-blue-700' :
+                      'bg-green-100 text-green-700'
+                    }`}>
+                      {news.badge}
+                    </span>
+                  </div>
+                  <div className="text-sm text-slate-600 mb-2">{news.description}</div>
+                  <div className="text-xs text-slate-500 flex items-center gap-1">
+                    <i className="fas fa-clock" />
+                    {news.date}
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
