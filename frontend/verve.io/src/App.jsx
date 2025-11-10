@@ -9,6 +9,8 @@ import ResumeParser from './components/ResumeParser';
 import EssayWritingPage from './components/EssayWritingPage';
 import MBAVideoInterview from './components/MBAVideoInterview';
 import LoadingSpinner from './components/ui/LoadingSpinner';
+import ErrorBoundary from './components/ui/ErrorBoundary';
+import AIQuizPlatform from './components/AIQuizPlatform';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -41,68 +43,78 @@ function App() {
 
   return (
     <BrowserRouter>
-      <div className="App">
-        <Routes>
-          
-          <Route 
-            path="/login" 
-            element={
-              <PublicRoute>
-                <Login />
-              </PublicRoute>
-            } 
-          />
-          <Route 
-            path="/register" 
-            element={
-              <PublicRoute>
-                <Register />
-              </PublicRoute>
-            } 
-          />
-          <Route 
-            path="/dashboard" 
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            } 
-          />
-          <Route
-            path="/user/:userid/dashboard"
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/resume-parser"
-            element={
-              <ProtectedRoute>
-                <ResumeParser />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/essay-writing"
-            element={
-              <ProtectedRoute>
-                <EssayWritingPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/mba-interview"
-            element={
-              <ProtectedRoute>
-                <MBAVideoInterview />
-              </ProtectedRoute>
-            }
-          />
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
-      </div>
+      <ErrorBoundary>
+        <div className="App">
+          <Routes>
+            
+            <Route 
+              path="/login" 
+              element={
+                <PublicRoute>
+                  <Login />
+                </PublicRoute>
+              } 
+            />
+            <Route 
+              path="/register" 
+              element={
+                <PublicRoute>
+                  <Register />
+                </PublicRoute>
+              } 
+            />
+            <Route 
+              path="/dashboard" 
+              element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route
+              path="/user/:userid/dashboard"
+              element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/resume-parser"
+              element={
+                <ProtectedRoute>
+                  <ResumeParser />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/essay-writing"
+              element={
+                <ProtectedRoute>
+                  <EssayWritingPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/ai-quiz"
+              element={
+                <ProtectedRoute>
+                  <AIQuizPlatform />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/mba-interview"
+              element={
+                <ProtectedRoute>
+                  <MBAVideoInterview />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
+        </div>
+      </ErrorBoundary>
     </BrowserRouter>
   );
 }
