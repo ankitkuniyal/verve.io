@@ -1,5 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ArrowLeft, Camera, Video, Clock, CheckCircle, Play, Square, SkipForward, RefreshCw, BarChart3, Download } from 'lucide-react';
+import { evaluateInterviewPerformance } from '../services/performanceEvaluator.js';
+import { analyzeVideoFeed } from '../services/visionAnalysis.js';
+import { analyzeSpeechContent } from '../services/nlpAnalysis.js';
+
 
 const MBA_QUESTIONS = [
   {
