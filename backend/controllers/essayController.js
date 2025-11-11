@@ -1,7 +1,8 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import dotenv from 'dotenv';
+dotenv.config();
 
-const genAI = new GoogleGenerativeAI("AIzaSyC-trtQT1hFU-OUur-42zd4yqkXFeKqciw");
-
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 const analysisPrompt = `
 You are an expert MBA admissions evaluator. Analyze the following essay comprehensively and provide a detailed JSON response with this exact structure:
@@ -59,6 +60,26 @@ TOPIC: "{topic}"
 Provide ONLY the JSON response, no additional text or explanations.
 `;
 
+// Helper: Tries first with 'gemini-2.0-flash-lite', then falls back to 'gemini-2.5-flash'
+async function tryAnalyzeWithModels(finalPrompt) {
+  const modelNames = ['gemini-2.0-flash-lite', 'gemini-2.5-flash'];
+  let lastError = null;
+  for (const modelName of modelNames) {
+    try {
+      const model = genAI.getGenerativeModel({ model: modelName });
+      const result = await model.generateContent(finalPrompt);
+      const response = await result.response;
+      const text = response.text();
+      const cleanText = text.replace(/```json\n?|\n?```/g, '').trim();
+      const analysis = JSON.parse(cleanText);
+      return analysis;
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  throw lastError;
+}
+
 export const analyzeEssay = async (req, res) => {
   try {
     const { essay, topic = 'General MBA Admission' } = req.body;
@@ -77,19 +98,16 @@ export const analyzeEssay = async (req, res) => {
       });
     }
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-    
     const finalPrompt = analysisPrompt
       .replace('{essay}', essay)
       .replace('{topic}', topic);
 
-    const result = await model.generateContent(finalPrompt);
-    const response = await result.response;
-    const text = response.text();
-
-    // Clean and parse the response
-    const cleanText = text.replace(/```json\n?|\n?```/g, '').trim();
-    const analysis = JSON.parse(cleanText);
+    let analysis;
+    try {
+      analysis = await tryAnalyzeWithModels(finalPrompt);
+    } catch (err) {
+      throw err;
+    }
 
     res.json({
       success: true,
@@ -106,9 +124,9 @@ export const analyzeEssay = async (req, res) => {
 
   } catch (error) {
     console.error('Essay analysis error:', error);
-    
+
     // Handle specific error types
-    if (error.message.includes('JSON')) {
+    if (error.message && error.message.includes('JSON')) {
       return res.status(500).json({
         success: false,
         error: 'Failed to parse analysis response',
@@ -116,7 +134,7 @@ export const analyzeEssay = async (req, res) => {
       });
     }
 
-    if (error.message.includes('API key')) {
+    if (error.message && error.message.includes('API key')) {
       return res.status(500).json({
         success: false,
         error: 'Configuration error',
@@ -166,17 +184,11 @@ export const bulkAnalyzeEssays = async (req, res) => {
       }
 
       try {
-        const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
         const finalPrompt = analysisPrompt
           .replace('{essay}', essay)
           .replace('{topic}', topic);
 
-        const result = await model.generateContent(finalPrompt);
-        const response = await result.response;
-        const text = response.text();
-
-        const cleanText = text.replace(/```json\n?|\n?```/g, '').trim();
-        const analysis = JSON.parse(cleanText);
+        const analysis = await tryAnalyzeWithModels(finalPrompt);
 
         analysisResults.push({
           success: true,
@@ -222,12 +234,30 @@ export const bulkAnalyzeEssays = async (req, res) => {
 export const getAnalysisHealth = async (req, res) => {
   try {
     // Test the Gemini API connection
-    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-lite' });
     const testPrompt = 'Respond with just: "OK"';
-    
-    const result = await model.generateContent(testPrompt);
-    const response = await result.response;
-    const text = response.text();
+
+    let text = '';
+    try {
+      const result = await model.generateContent(testPrompt);
+      const response = await result.response;
+      text = response.text();
+    } catch (err) {
+      // fallback to gemini-2.5-flash if connection fails
+      try {
+        const fallbackModel = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+        const result2 = await fallbackModel.generateContent(testPrompt);
+        const response2 = await result2.response;
+        text = response2.text();
+      } catch (e) {
+        return res.status(500).json({
+          success: false,
+          status: 'Service degraded',
+          error: e.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
 
     res.json({
       success: true,

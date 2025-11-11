@@ -1,7 +1,9 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import dotenv from 'dotenv';
+dotenv.config();
 
 // Initialize Gemini AI
-const genAI = new GoogleGenerativeAI("AIzaSyC-trtQT1hFU-OUur-42zd4yqkXFeKqciw");
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 /**
  * Clean JSON string by removing problematic characters, including bad escapes
@@ -53,7 +55,55 @@ function parseAIResponse(text) {
 }
 
 /**
- * Generate AI Quiz using Gemini. Automatically recover from JSON parsing issues caused by AI escapes.
+ * Helper to try quiz generation using multiple models
+ */
+async function tryGenerateQuizWithModels(prompt, modelNames) {
+  let lastError = null;
+  for (const modelName of modelNames) {
+    try {
+      const model = genAI.getGenerativeModel({ model: modelName });
+      console.log(`Trying Gemini model: ${modelName}`);
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const text = response.text();
+      console.log(`[${modelName}] Raw AI response received`);
+      console.log(`[${modelName}] Response length:`, text.length);
+      console.log(`[${modelName}] First 500 chars:`, text.substring(0, 500));
+      let quizData;
+      try {
+        quizData = parseAIResponse(text);
+      } catch (parseError) {
+        // Attempt last-resort: remove all backslashes and try again for severe cases
+        try {
+          const fixed = text.replace(/\\/g, "");
+          quizData = JSON.parse(fixed.match(/\{[\s\S]*\}/)[0]);
+        } catch {
+          throw parseError;
+        }
+      }
+      // Validate the quiz structure
+      if (!quizData.sections || !Array.isArray(quizData.sections)) {
+        throw new Error('Invalid quiz structure: missing sections array');
+      }
+      for (const section of quizData.sections) {
+        if (!section.questions || !Array.isArray(section.questions)) {
+          throw new Error(`Invalid section structure: ${section.name} missing questions array`);
+        }
+      }
+      // If all checks pass, return quizData!
+      return quizData;
+    } catch (error) {
+      lastError = error;
+      console.warn(`[${modelName}] Quiz generation failed, trying next model...: ${error.message}`);
+      continue;
+    }
+  }
+  // If we got here, all attempts failed.
+  throw lastError || new Error('All AI models failed to generate quiz');
+}
+
+/**
+ * Generate AI Quiz using Gemini. Tries with gemini-2.0-flash-lite first; if fails, falls back to gemini-2.5-flash.
  */
 export const generateQuiz = async (req, res) => {
   try {
@@ -81,8 +131,6 @@ export const generateQuiz = async (req, res) => {
         error: "At least one section is required"
       });
     }
-
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-lite' });
 
     const prompt = `
 You are an expert MBA exam preparation specialist. Generate a realistic ${examConfig.name} practice quiz.
@@ -138,38 +186,17 @@ OUTPUT FORMAT - RETURN ONLY VALID JSON, NO OTHER TEXT:
 IMPORTANT: Return ONLY the JSON object. Do not include any other text, markdown, or code blocks.
 `;
 
-    console.log('Sending prompt to Gemini...');
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
-
-    console.log('Raw AI response received');
-    console.log('Response length:', text.length);
-    console.log('First 500 chars:', text.substring(0, 500));
-
-    // Parse the AI response, recover gracefully from escape errors
+    // Try gemini-2.0-flash-lite first, then fallback to gemini-2.5-flash on error
     let quizData;
     try {
-      quizData = parseAIResponse(text);
-    } catch (parseError) {
-      // Attempt last-resort: remove all backslashes and try again for severe cases
-      try {
-        const fixed = text.replace(/\\/g, "");
-        quizData = JSON.parse(fixed.match(/\{[\s\S]*\}/)[0]);
-      } catch {
-        throw parseError;
-      }
-    }
-
-    // Validate the quiz structure
-    if (!quizData.sections || !Array.isArray(quizData.sections)) {
-      throw new Error('Invalid quiz structure: missing sections array');
-    }
-
-    for (const section of quizData.sections) {
-      if (!section.questions || !Array.isArray(section.questions)) {
-        throw new Error(`Invalid section structure: ${section.name} missing questions array`);
-      }
+      quizData = await tryGenerateQuizWithModels(prompt, ['gemini-2.0-flash-lite', 'gemini-2.5-flash']);
+    } catch (error) {
+      console.error('Quiz generation error:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to generate quiz',
+        details: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+      });
     }
 
     console.log('Quiz generated successfully');
@@ -190,7 +217,48 @@ IMPORTANT: Return ONLY the JSON object. Do not include any other text, markdown,
 };
 
 /**
- * Analyze user's quiz performance using Gemini AI.
+ * Helper to try quiz performance analysis using multiple models
+ */
+async function tryAnalyzeQuizPerformanceWithModels(analysisPrompt, modelNames) {
+  let lastError = null;
+  for (const modelName of modelNames) {
+    try {
+      const model = genAI.getGenerativeModel({ model: modelName });
+      console.log(`Trying Gemini model for analysis: ${modelName}`);
+      const result = await model.generateContent(analysisPrompt);
+      const response = await result.response;
+      const text = response.text();
+      console.log(`[${modelName}] Raw analysis response received`);
+      console.log(`[${modelName}] Response length:`, text.length);
+      let analysisData;
+      try {
+        analysisData = parseAIResponse(text);
+      } catch (parseError) {
+        // Last-resort clean: remove backslashes, re-parse
+        try {
+          const fixed = text.replace(/\\/g, "");
+          analysisData = JSON.parse(fixed.match(/\{[\s\S]*\}/)[0]);
+        } catch {
+          throw parseError;
+        }
+      }
+      // Validate analysis structure
+      if (!analysisData.analysis) {
+        throw new Error('Invalid analysis structure from AI');
+      }
+      return analysisData;
+    } catch (error) {
+      lastError = error;
+      console.warn(`[${modelName}] Quiz analysis failed, trying next model...: ${error.message}`);
+      continue;
+    }
+  }
+  // If we got here, all attempts failed.
+  throw lastError || new Error('All AI models failed to analyze performance');
+}
+
+/**
+ * Analyze user's quiz performance using Gemini AI, first attempts gemini-2.0-flash-lite, then falls back to gemini-2.5-flash if needed.
  */
 export const analyzeQuizPerformance = async (req, res) => {
   try {
@@ -203,7 +271,6 @@ export const analyzeQuizPerformance = async (req, res) => {
       });
     }
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-lite' });
     const totalQuestions = quizData.totalQuestions || quizData.sections?.reduce((total, section) => total + (section.questions?.length || 0), 0) || 0;
     const answeredQuestions = userAnswers.filter(answer => answer !== null && answer !== undefined).length;
 
@@ -274,30 +341,17 @@ THIS IS A SAMPLE OUTPUT, YOU REPLY AS PER THE USER PERFORMANCE
 }
 `;
 
-    console.log('Sending analysis prompt to Gemini...');
-    const result = await model.generateContent(analysisPrompt);
-    const response = await result.response;
-    const text = response.text();
-
-    console.log('Raw analysis response received');
-    console.log('Response length:', text.length);
-    console.log(text)
+    // Try gemini-2.0-flash-lite first, fallback to gemini-2.5-flash
     let analysisData;
     try {
-      analysisData = parseAIResponse(text);
-    } catch (parseError) {
-      // Last-resort clean: remove backslashes, re-parse
-      try {
-        const fixed = text.replace(/\\/g, "");
-        analysisData = JSON.parse(fixed.match(/\{[\s\S]*\}/)[0]);
-      } catch {
-        throw parseError;
-      }
-    }
-
-    // Validate analysis structure
-    if (!analysisData.analysis) {
-      throw new Error('Invalid analysis structure from AI');
+      analysisData = await tryAnalyzeQuizPerformanceWithModels(analysisPrompt, ['gemini-2.0-flash-lite', 'gemini-2.5-flash']);
+    } catch (error) {
+      console.error('Quiz analysis error:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to analyze performance',
+        details: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+      });
     }
 
     console.log('Analysis completed successfully');

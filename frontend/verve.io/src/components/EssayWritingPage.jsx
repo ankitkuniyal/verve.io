@@ -97,7 +97,7 @@ const EssayWritingPage = () => {
   };
 
   return (
-    <div className="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen  px-4 sm:px-6 lg:px-8">
+    <div className="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen  py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
         {/* Add this Back to Dashboard button */}
     <div className="flex justify-end mb-6">

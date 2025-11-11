@@ -8,7 +8,7 @@ let app;
 
 try {
   const serviceAccount = JSON.parse(
-    fs.readFileSync(new URL('./serviceAccountKey.json', import.meta.url))
+    fs.readFileSync(new URL('../serviceAccountKey.json', import.meta.url))
   );
 
   app = admin.apps.length

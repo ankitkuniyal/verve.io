@@ -115,15 +115,25 @@ const SecurityWrapper = ({ children, violations }) => {
               <i className="fas fa-expand text-yellow-600 text-2xl"></i>
             </div>
             <h3 className="text-xl font-bold text-gray-900 mb-2">Full Screen Required</h3>
-            <p className="text-gray-600 mb-4">
+            <p className="text-gray-600 mb-6">
               Please enable full screen mode to continue with the quiz.
             </p>
-            <button
-              onClick={requestFullScreen}
-              className="px-6 py-3 bg-yellow-600 text-white rounded-xl font-semibold hover:bg-yellow-700 transition-colors"
-            >
-              Enable Full Screen
-            </button>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <button
+                onClick={requestFullScreen}
+                className="flex-1 px-6 py-3 bg-yellow-600 text-white rounded-xl font-semibold shadow hover:bg-yellow-700 hover:scale-[1.03] transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+              >
+                <i className="fas fa-expand mr-2"></i>
+                Enable Full Screen
+              </button>
+              <button
+                onClick={() => window.location.assign('/dashboard')}
+                className="flex-1 px-6 py-3 bg-white border border-gray-300 text-gray-800 rounded-xl font-semibold shadow hover:bg-gray-100 transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-gray-300"
+              >
+                <i className="fas fa-times mr-2"></i>
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}

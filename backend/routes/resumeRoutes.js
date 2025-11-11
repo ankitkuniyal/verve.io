@@ -1,10 +1,11 @@
 import express from 'express';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-
+import dotenv from 'dotenv';
+dotenv.config();
 const router = express.Router();
 
 // Initialize Gemini AI
-const genAI = new GoogleGenerativeAI("AIzaSyC-trtQT1hFU-OUur-42zd4yqkXFeKqciw");
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // Middleware to check that resume text is provided
 const validateResumeInput = (req, res, next) => {
