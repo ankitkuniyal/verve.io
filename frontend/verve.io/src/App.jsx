@@ -27,7 +27,7 @@ const ProtectedRoute = ({ children }) => {
 
 // Public Route Component (for login/register when already authenticated)
 const PublicRoute = ({ children }) => {
-  
+  const { user, loading } = useAuth();
   
   if (loading) {
     return <LoadingSpinner />;
