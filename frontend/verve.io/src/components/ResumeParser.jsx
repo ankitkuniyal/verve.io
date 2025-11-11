@@ -188,7 +188,7 @@ export default function PDFTextReader() {
       await saveToFirebase(resumeData);
 
       // Send extracted text to /api/resume/analyze
-      const analyzeResp = await fetch("http://localhost:3000/api/resume/analyze", {
+      const analyzeResp = await fetch("https://verve-io.onrender.com/api/resume/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ resume: rawText }),

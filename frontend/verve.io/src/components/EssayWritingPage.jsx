@@ -48,7 +48,7 @@ const EssayWritingPage = () => {
     setError('');
     try {
       const response = await fetch(
-        `${import.meta.env.SERVER_URL || 'http://localhost:3000'}/api/essay/analyze`,
+        "https://verve-io.onrender.com/api/essay/analyze",
         {
           method: 'POST',
           headers: {

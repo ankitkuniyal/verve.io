@@ -120,7 +120,7 @@ const AIQuizPlatform = () => {
       const examConfig = availableExams.find(exam => exam.id === examId);
       const preferences = getAutoPreferences(examId);
 
-      const response = await fetch('http://localhost:3000/api/quiz/generate', {
+      const response = await fetch('https://verve-io.onrender.com/api/quiz/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -158,7 +158,7 @@ const AIQuizPlatform = () => {
       setIsLoading(true);
       setError('');
 
-      const response = await fetch('http://localhost:3000/api/quiz/analysis', {
+      const response = await fetch('https://verve-io.onrender.com/api/quiz/analysis', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
