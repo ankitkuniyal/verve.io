@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { ArrowLeft, Camera, Video, Clock, CheckCircle, Play, Square, SkipForward, RefreshCw, BarChart3, Download } from 'lucide-react';
 import { evaluateInterviewPerformance } from '../services/performanceEvaluator.js';
 import { analyzeVideoFeed } from '../services/visionAnalysis.js';
@@ -590,13 +591,13 @@ export default function MBAVideoInterview() {
         
         {/* Back to Dashboard button */}
         <div className="flex justify-end mb-6">
-          <a 
-            href="/dashboard"
+          <Link 
+            to="/dashboard"
             className="bg-white hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg transition-all shadow-sm hover:shadow flex items-center gap-2 text-sm font-medium border border-slate-200"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Dashboard
-          </a>
+          </Link>
         </div>
         
         {/* MAIN BODY */}

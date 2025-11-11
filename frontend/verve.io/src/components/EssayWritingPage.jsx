@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, Lightbulb } from 'lucide-react';
 
 const EssayWritingPage = () => {
@@ -101,13 +101,13 @@ const EssayWritingPage = () => {
       <div className="max-w-7xl mx-auto">
         {/* Add this Back to Dashboard button */}
     <div className="flex justify-end mb-6">
-      <a 
-        href="/dashboard"
+      <Link 
+        to="/dashboard"
         className="bg-white hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg transition-all shadow-sm hover:shadow flex items-center gap-2 text-sm font-medium border border-slate-200"
       >
         <ArrowLeft className="w-4 h-4" />
         Back to Dashboard
-      </a>
+      </Link>
     </div>
         
         {/* Header Section */}

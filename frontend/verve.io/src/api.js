@@ -1,5 +1,5 @@
 // Minimal API wrapper to mimic axios-like interface (returns { data })
-const baseUrl = "http://localhost:3000";
+const baseUrl = "https://verve-io.onrender.com";
 
 async function request(method, path, body = null, opts = {}) {
   const url = path.startsWith("http")

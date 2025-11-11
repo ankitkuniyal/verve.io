@@ -1,6 +1,28 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === 'development';
+
+// Functional component to handle navigation with useNavigate
+const NavigateButton = ({ to, onBeforeNavigate, className, children }) => {
+  const navigate = useNavigate();
+  
+  const handleClick = () => {
+    if (onBeforeNavigate) {
+      onBeforeNavigate();
+    }
+    navigate(to);
+  };
+  
+  return (
+    <button
+      onClick={handleClick}
+      className={className}
+    >
+      {children}
+    </button>
+  );
+};
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -39,14 +61,6 @@ class ErrorBoundary extends React.Component {
     });
   };
 
-  handleGoHome = () => {
-    this.setState({ 
-      hasError: false, 
-      error: null,
-      errorInfo: null 
-    });
-    window.location.href = '/dashboard';
-  };
 
   render() {
     if (this.state.hasError) {
@@ -107,12 +121,19 @@ class ErrorBoundary extends React.Component {
               )}
               
               {this.props.showHome !== false && (
-                <button
-                  onClick={this.handleGoHome}
+                <NavigateButton 
+                  to="/dashboard" 
+                  onBeforeNavigate={() => {
+                    this.setState({ 
+                      hasError: false, 
+                      error: null,
+                      errorInfo: null 
+                    });
+                  }}
                   className="px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors font-medium"
                 >
                   Go to Dashboard
-                </button>
+                </NavigateButton>
               )}
             </div>
           </div>

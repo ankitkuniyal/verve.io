@@ -351,8 +351,8 @@ export default function Dashboard() {
       // Clear all localStorage and sessionStorage
       localStorage.clear();
       sessionStorage.clear();
-      // Optionally redirect to login or homepage
-      window.location.href = '/'; // adjust this to your application's route
+      // Redirect to homepage using React Router
+      navigate('/');
       console.log('Successfully logged out and cleared storage');
     } catch (error) {
       console.error('Error during logout:', error);
@@ -567,7 +567,7 @@ export default function Dashboard() {
             }
             delay={200}
             className="transition-transform hover:-translate-y-1 hover:scale-105 hover:shadow-2xl hover:bg-gradient-to-br hover:from-blue-50 hover:to-blue-100 border-2 border-blue-200 shadow-[0_4px_20px_0_rgba(59,130,246,0.15)] shadow-lg"
-            onClick={() => window.location.href = '/resume-parser'}
+            onClick={() => navigate('/resume-parser')}
           />
           <FeatureCard
             icon={
@@ -583,7 +583,7 @@ export default function Dashboard() {
             }
             delay={300}
             className="transition-transform hover:-translate-y-1 hover:scale-105 hover:shadow-2xl hover:bg-gradient-to-br hover:from-pink-50 hover:to-purple-50 border-2 border-purple-200 shadow-[0_4px_20px_0_rgba(168,85,247,0.15)] shadow-lg"
-            onClick={() => window.location.href = '/ai-quiz'}
+            onClick={() => navigate('/ai-quiz')}
           />
           <FeatureCard
             icon={
@@ -599,7 +599,7 @@ export default function Dashboard() {
             }
             delay={400}
             className="transition-transform hover:-translate-y-1 hover:scale-105 hover:shadow-2xl hover:bg-gradient-to-br hover:from-yellow-50 hover:to-amber-100 border-2 border-yellow-200 shadow-[0_4px_20px_0_rgba(251,191,36,0.15)] shadow-lg"
-            onClick={() => window.location.href = '/essay-writing'}
+            onClick={() => navigate('/essay-writing')}
           />
           <FeatureCard
             icon={
@@ -615,7 +615,7 @@ export default function Dashboard() {
             }
             delay={500}
             className="transition-transform hover:-translate-y-1 hover:scale-105 hover:shadow-2xl hover:bg-gradient-to-br hover:from-teal-50 hover:to-blue-50 border-2 border-teal-200 shadow-[0_4px_20px_0_rgba(45,212,191,0.13)]"
-            onClick={() => window.location.href = '/mba-interview'}
+            onClick={() => navigate('/mba-interview')}
           />
         </div>
 

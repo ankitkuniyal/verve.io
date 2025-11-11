@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const SecurityWrapper = ({ children, violations }) => {
+  const navigate = useNavigate();
   const [warningCount, setWarningCount] = useState(0);
   const [showWarning, setShowWarning] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
@@ -127,7 +129,7 @@ const SecurityWrapper = ({ children, violations }) => {
                 Enable Full Screen
               </button>
               <button
-                onClick={() => window.location.assign('/dashboard')}
+                onClick={() => navigate('/dashboard')}
                 className="flex-1 px-6 py-3 bg-white border border-gray-300 text-gray-800 rounded-xl font-semibold shadow hover:bg-gray-100 transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-gray-300"
               >
                 <i className="fas fa-times mr-2"></i>

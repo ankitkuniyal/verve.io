@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { ArrowLeft, Play, Book, FileText, ExternalLink, Clock, Users, Star, Search, Filter, ThumbsUp, Download, Share2, Bookmark, Eye } from 'lucide-react';
 
 const LearningHub = () => {
@@ -342,13 +343,13 @@ const LearningHub = () => {
             </div>
             {/* Add this Back to Dashboard button */}
     <div className="flex justify-end mb-6">
-      <a 
-        href="/dashboard"
+      <Link 
+        to="/dashboard"
         className="bg-white hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg transition-all shadow-sm hover:shadow flex items-center gap-2 text-sm font-medium border border-slate-200"
       >
         <ArrowLeft className="w-4 h-4" />
         Back to Dashboard
-      </a>
+      </Link>
     </div>
 
             

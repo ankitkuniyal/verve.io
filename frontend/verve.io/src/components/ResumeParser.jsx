@@ -1,5 +1,6 @@
 // src/components/PDFTextReader.jsx
 import React, { useState, useRef, useEffect } from "react";
+import { Link } from "react-router-dom";
 import {
   ArrowLeft,
   Upload,
@@ -240,13 +241,13 @@ export default function PDFTextReader() {
                 Upload your resume for AI-powered analysis and personalized recommendations
               </p>
             </div>
-            <a 
-              href="/dashboard"
+            <Link 
+              to="/dashboard"
               className="bg-white hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg transition-all shadow-sm hover:shadow flex items-center gap-2 text-sm font-medium border border-slate-200"
             >
               <ArrowLeft className="w-4 h-4" />
               Back to Dashboard
-            </a>
+            </Link>
           </div>
         </div>
         
