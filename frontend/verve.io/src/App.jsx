@@ -1,6 +1,6 @@
 // src/App.jsx
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
@@ -27,7 +27,7 @@ const ProtectedRoute = ({ children }) => {
 
 // Public Route Component (for login/register when already authenticated)
 const PublicRoute = ({ children }) => {
-  const { user, loading } = useAuth();
+  
   
   if (loading) {
     return <LoadingSpinner />;
@@ -44,11 +44,10 @@ function App() {
   }
 
   return (
-    <BrowserRouter>
+    <Router>
       <ErrorBoundary>
         <div className="App">
           <Routes>
-            
             <Route 
               path="/login" 
               element={
@@ -121,11 +120,14 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            <Route path="/" element={<LandingPage/>} />
+            <Route path="/" element={<LandingPage />} />
+            
+            {/* Catch all route - redirect to home */}
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </div>
       </ErrorBoundary>
-    </BrowserRouter>
+    </Router>
   );
 }
 
