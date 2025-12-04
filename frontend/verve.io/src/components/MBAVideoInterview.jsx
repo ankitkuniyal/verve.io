@@ -144,6 +144,9 @@ export default function MBAVideoInterview() {
   const [results, setResults] = useState(null);
   const [isGeneratingResults, setIsGeneratingResults] = useState(false);
 
+  // ✅ NEW: store per-question recorded data (video + transcript + question)
+  const [answers, setAnswers] = useState([]);
+
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const prepTimerRef = useRef(null);
@@ -151,11 +154,14 @@ export default function MBAVideoInterview() {
   const recognitionRef = useRef(null);
   const transcriptRef = useRef('');
 
+  // ✅ NEW: keep last transcript & question safe for recorder.onstop
+  const lastTranscriptRef = useRef('');
+  const lastQuestionRef = useRef(null);
+
   const currentQuestion = MBA_QUESTIONS[currentQuestionIndex];
 
-  // ✅ FIXED SPEECH RECOGNITION SETUP
+  // ✅ SPEECH RECOGNITION SETUP
   useEffect(() => {
-    // Check if browser supports speech recognition
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     
     if (!SpeechRecognition) {
@@ -180,27 +186,23 @@ export default function MBAVideoInterview() {
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const transcriptPart = event.results[i][0].transcript;
         if (event.results[i].isFinal) {
-          // Append final transcript with proper spacing
           transcriptRef.current += transcriptPart + ' ';
         } else {
           interimTranscript += transcriptPart;
         }
       }
 
-      // Update state with both final and interim transcripts
       setTranscript(transcriptRef.current + interimTranscript);
     };
 
     recognition.onerror = (event) => {
       console.error('Speech recognition error:', event.error);
       
-      // Don't stop on common non-fatal errors
       if (event.error === 'no-speech' || event.error === 'audio-capture') {
         console.log('No speech detected, continuing to listen...');
         return;
       }
       
-      // For more serious errors, stop recognition
       if (recognitionRef.current) {
         recognitionRef.current.stop();
         setIsListening(false);
@@ -211,7 +213,6 @@ export default function MBAVideoInterview() {
       console.log('🎤 Speech recognition ended');
       setIsListening(false);
       
-      // Auto-restart if we're still in recording mode
       if (stage === 'recording' && !isListening) {
         console.log('🔄 Auto-restarting speech recognition');
         setTimeout(() => {
@@ -235,13 +236,13 @@ export default function MBAVideoInterview() {
     };
   }, []);
 
-  // ✅ FIXED: Start/stop speech recognition based on recording state
+  // ✅ Start/stop speech recognition based on recording state
   useEffect(() => {
     if (!recognitionRef.current || !speechRecognitionSupported) return;
 
     if (stage === 'recording' && !isListening) {
       console.log('🚀 Starting speech recognition for recording');
-      transcriptRef.current = ''; // Reset transcript for new question
+      transcriptRef.current = '';
       setTranscript('');
       
       setTimeout(() => {
@@ -258,7 +259,7 @@ export default function MBAVideoInterview() {
     }
   }, [stage, isListening, speechRecognitionSupported]);
 
-  // ✅ FIXED: Reset transcript when moving to new question
+  // ✅ Reset transcript when moving to new question
   useEffect(() => {
     if (stage === 'preparing') {
       transcriptRef.current = '';
@@ -266,19 +267,17 @@ export default function MBAVideoInterview() {
     }
   }, [currentQuestionIndex, stage]);
 
-  // ✅ FIXED CAMERA INITIALIZATION
+  // ✅ CAMERA INITIALIZATION
   const startCamera = async () => {
     setIsLoadingCamera(true);
     setCameraError('');
 
     try {
-      // Stop any existing stream first
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
         streamRef.current = null;
       }
 
-      // Request camera and microphone
       const constraints = {
         video: {
           width: { ideal: 1280 },
@@ -291,19 +290,15 @@ export default function MBAVideoInterview() {
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       streamRef.current = stream;
 
-      // Set state first to ensure video element is rendered
       setIsCameraOn(true);
       setStage('preparing');
       
-      // Wait for next render cycle
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      // Now attach stream to video element
       if (videoRef.current && streamRef.current) {
         videoRef.current.srcObject = streamRef.current;
         videoRef.current.muted = true;
         
-        // Wait for video to load
         await new Promise((resolve, reject) => {
           if (!videoRef.current) return reject(new Error('Video element not found'));
           
@@ -320,7 +315,6 @@ export default function MBAVideoInterview() {
           };
         });
 
-        // Play video
         try {
           await videoRef.current.play();
           console.log('✅ Camera started successfully');
@@ -332,8 +326,6 @@ export default function MBAVideoInterview() {
       }
 
       setIsLoadingCamera(false);
-      
-      // Start preparation timer
       startPrepTimer();
 
     } catch (err) {
@@ -358,7 +350,6 @@ export default function MBAVideoInterview() {
       
       setCameraError(errorMessage);
       
-      // Clean up on error
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
         streamRef.current = null;
@@ -427,6 +418,9 @@ export default function MBAVideoInterview() {
       });
       
       const recordedChunks = [];
+
+      // ✅ keep track of the question being answered
+      lastQuestionRef.current = currentQuestion;
       
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) {
@@ -438,7 +432,21 @@ export default function MBAVideoInterview() {
       recorder.onstop = () => {
         const blob = new Blob(recordedChunks, { type: mimeType });
         console.log('Recording completed. Total size:', blob.size, 'bytes');
-        // Here you would upload or save the blob
+
+        const transcriptForThisQuestion = lastTranscriptRef.current || transcriptRef.current || '';
+
+        // ✅ store this question's data to send later
+        setAnswers(prev => [
+          ...prev,
+          {
+            questionId: lastQuestionRef.current?.id,
+            question: lastQuestionRef.current?.question,
+            transcript: transcriptForThisQuestion.trim(),
+            videoBlob: blob
+          }
+        ]);
+
+        setMediaRecorder(null);
       };
 
       recorder.onerror = (e) => {
@@ -474,6 +482,9 @@ export default function MBAVideoInterview() {
       recordTimerRef.current = null;
     }
 
+    // ✅ capture transcript for this question before it gets reset
+    lastTranscriptRef.current = transcriptRef.current;
+
     // Stop speech recognition
     if (recognitionRef.current && isListening) {
       recognitionRef.current.stop();
@@ -489,7 +500,7 @@ export default function MBAVideoInterview() {
         if (currentQuestionIndex < MBA_QUESTIONS.length - 1) {
           setCurrentQuestionIndex(prev => prev + 1);
           setStage('preparing');
-          setTranscript(''); // Clear transcript for next question
+          setTranscript('');
           startPrepTimer();
         } else {
           setStage('completed');
@@ -503,7 +514,6 @@ export default function MBAVideoInterview() {
     if (prepTimerRef.current) clearInterval(prepTimerRef.current);
     if (recordTimerRef.current) clearInterval(recordTimerRef.current);
     
-    // Stop speech recognition
     if (recognitionRef.current && isListening) {
       recognitionRef.current.stop();
       setIsListening(false);
@@ -519,7 +529,7 @@ export default function MBAVideoInterview() {
     if (currentQuestionIndex < MBA_QUESTIONS.length - 1) {
       setCurrentQuestionIndex(prev => prev + 1);
       setStage('preparing');
-      setTranscript(''); // Clear transcript for next question
+      setTranscript('');
       startPrepTimer();
     } else {
       setStage('completed');
@@ -527,16 +537,73 @@ export default function MBAVideoInterview() {
     }
   };
 
-  const generateResults = () => {
+  // ✅ NEW: call backend with videos + transcripts + questions
+  const generateResults = async () => {
+    if (!answers.length) {
+      alert('No recorded answers found to analyze.');
+      return;
+    }
+
     setIsGeneratingResults(true);
-    
-    // Simulate analysis processing time
-    setTimeout(() => {
+
+    try {
+      const formData = new FormData();
+
+      // Metadata as JSON: question + transcript (no blobs here)
+      const metadata = answers.map((ans, idx) => ({
+        index: idx,
+        questionId: ans.questionId,
+        question: ans.question,
+        transcript: ans.transcript
+      }));
+
+      formData.append('metadata', JSON.stringify(metadata));
+
+      // Attach each video blob
+      answers.forEach((ans, idx) => {
+        if (ans.videoBlob) {
+          formData.append(
+            `video_${idx}`,
+            ans.videoBlob,
+            `question_${ans.questionId || idx}.webm`
+          );
+        }
+      });
+
+      const response = await fetch('https://verve-io.onrender.com/api/services/interview', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        throw new Error(`Server responded with status ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      // 👉 Expecting backend to return JSON in the SAME SHAPE as GENERATE_RESULTS
+      // {
+      //   overallScore,
+      //   verbalCommunication: { score, feedback[], recommendations[] },
+      //   confidence: { ... },
+      //   contentQuality: { ... },
+      //   nonVerbalCues: { ... },
+      //   keyStrengths: [],
+      //   areasForImprovement: [],
+      //   finalRecommendations: []
+      // }
+
+      setResults(data);
+      setShowResults(true);
+    } catch (err) {
+      console.error('Error generating results from backend:', err);
+      alert('Failed to generate results from server. Using mock results instead.');
       const analysisResults = GENERATE_RESULTS();
       setResults(analysisResults);
       setShowResults(true);
+    } finally {
       setIsGeneratingResults(false);
-    }, 2000);
+    }
   };
 
   const resetInterview = () => {
@@ -547,6 +614,7 @@ export default function MBAVideoInterview() {
     setResults(null);
     setTranscript('');
     transcriptRef.current = '';
+    setAnswers([]);
   };
 
   const downloadResults = () => {
@@ -658,29 +726,25 @@ export default function MBAVideoInterview() {
             </div>
           )}
 
-          {/* Prep or Recording Stage - COMPACT LAYOUT */}
+          {/* Prep or Recording Stage */}
           {(stage === 'preparing' || stage === 'recording') && (
             <div className="p-6">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[calc(100vh-200px)]">
                 
-                {/* LEFT COLUMN - Combined Question & Transcript */}
+                {/* LEFT COLUMN - Question + Transcript */}
                 <div className="flex flex-col h-full">
                   <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-2xl p-6 text-white shadow-lg flex-1 flex flex-col">
-                    {/* Header */}
                     <div className="mb-4">
                       <div className="text-sm font-medium text-white/80 mb-1">Introduction</div>
                       <div className="text-lg font-bold mb-2">Question {currentQuestionIndex + 1} of {MBA_QUESTIONS.length}</div>
                     </div>
                     
-                    {/* Question */}
                     <h3 className="text-2xl font-bold mb-3 leading-tight flex-1">{currentQuestion.question}</h3>
                     
-                    {/* Tip - No Gap */}
                     <div className="mb-4 p-3 bg-white/20 rounded-lg">
                       <p className="text-white/90 text-sm">💡 {currentQuestion.tips}</p>
                     </div>
 
-                    {/* Voice-to-Text Transcript - Right Below Tip */}
                     {stage === 'recording' && (
                       <div className="flex-1 flex flex-col min-h-0">
                         <div className="border-t border-white/30 pt-3">
@@ -717,7 +781,6 @@ export default function MBAVideoInterview() {
                     )}
                   </div>
 
-                  {/* Control Buttons - ALWAYS VISIBLE */}
                   <div className="flex gap-3 mt-4">
                     {stage === 'recording' ? (
                       <>
@@ -748,9 +811,8 @@ export default function MBAVideoInterview() {
                   </div>
                 </div>
 
-                {/* RIGHT COLUMN - Video with Timer */}
+                {/* RIGHT COLUMN - Video + Timer */}
                 <div className="flex flex-col h-full">
-                  {/* Video Container */}
                   <div className="relative bg-black rounded-2xl overflow-hidden shadow-lg flex-1">
                     {isCameraOn && (
                       <video
@@ -763,7 +825,6 @@ export default function MBAVideoInterview() {
                       />
                     )}
 
-                    {/* Loading overlay */}
                     {!isCameraOn && !cameraError && (
                       <div className="absolute inset-0 flex items-center justify-center bg-black">
                         <div className="text-white text-center">
@@ -773,7 +834,6 @@ export default function MBAVideoInterview() {
                       </div>
                     )}
 
-                    {/* Large Timer Display on Video */}
                     <div className="absolute top-4 right-4">
                       <div className="bg-black/80 backdrop-blur-sm px-4 py-3 rounded-xl shadow-2xl border border-white/20">
                         <div className="text-center">
@@ -792,7 +852,6 @@ export default function MBAVideoInterview() {
                       </div>
                     </div>
 
-                    {/* Progress Bar at Bottom */}
                     <div className="absolute bottom-0 left-0 right-0 bg-black/60 backdrop-blur-sm p-3">
                       <div className="flex items-center justify-between text-white mb-1">
                         <span className="text-sm font-medium">
@@ -813,7 +872,6 @@ export default function MBAVideoInterview() {
                     </div>
                   </div>
 
-                  {/* Interview Tips - Compact */}
                   <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 mt-4">
                     <h4 className="font-bold text-slate-800 mb-2 text-sm flex items-center gap-2">
                       <Clock size={16} />
