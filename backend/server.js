@@ -8,6 +8,7 @@ import authRoutes from './routes/authRoutes.js';
 import essayRoutes from './routes/essayRoutes.js';
 import quizRoutes from "./routes/quizRoutes.js"
 import resumeRoutes from "./routes/resumeRoutes.js"
+import interviewRoutes from "./routes/interviewRoutes.js"
 dotenv.config();
 
 const app = express();
