@@ -23,6 +23,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/essay', essayRoutes);
 app.use('/api/quiz', quizRoutes)
 app.use('/api/resume', resumeRoutes)
+app.use('/api/services/interview', interviewRoutes);
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
