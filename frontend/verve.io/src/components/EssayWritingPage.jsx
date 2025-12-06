@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, Lightbulb } from 'lucide-react';
+import { getAuth } from 'firebase/auth';
+import { db } from '../firebase/config';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 const EssayWritingPage = () => {
   const { topicId } = useParams();
@@ -66,6 +69,99 @@ const EssayWritingPage = () => {
 
       if (data.success) {
         setAnalysis(data.data.analysis);
+        
+        // Save essay result to Firestore
+        const auth = getAuth();
+        const currentUser = auth.currentUser;
+        
+        if (currentUser) {
+          const essayResult = {
+            userId: currentUser.uid,
+            analysis: data.data.analysis,
+            metadata: {
+              topic: topic,
+              analyzedAt: serverTimestamp(),
+              wordCount: wordCount
+            },
+            essay: essay, // Store the essay text as well
+            createdAt: serverTimestamp()
+          };
+          
+          try {
+            // Save to Firestore
+            const docRef = await addDoc(collection(db, 'essayResults'), essayResult);
+            console.log('Essay result saved to Firestore with ID:', docRef.id);
+            
+            // Also save to localStorage as backup (with userId for filtering)
+            const existingResults = JSON.parse(localStorage.getItem('essayResults') || '[]');
+            const localResult = {
+              ...essayResult,
+              id: docRef.id, // Include Firestore document ID
+              userId: currentUser.uid, // Ensure userId is included
+              metadata: {
+                ...essayResult.metadata,
+                analyzedAt: new Date().toISOString()
+              },
+              createdAt: new Date().toISOString()
+            };
+            existingResults.push(localResult);
+            localStorage.setItem('essayResults', JSON.stringify(existingResults));
+            
+            console.log('Essay result also saved to localStorage as backup');
+            
+            // Dispatch custom event to notify dashboard to refresh
+            window.dispatchEvent(new CustomEvent('essayResultUpdated', { 
+              detail: { score: data.data.analysis.overallAssessment?.totalScore || 0 } 
+            }));
+          } catch (firestoreError) {
+            console.error('Error saving to Firestore:', firestoreError);
+            console.error('Error details:', {
+              code: firestoreError.code,
+              message: firestoreError.message
+            });
+            
+            // Still save to localStorage as fallback
+            const existingResults = JSON.parse(localStorage.getItem('essayResults') || '[]');
+            const localResult = {
+              userId: currentUser.uid,
+              analysis: data.data.analysis,
+              metadata: {
+                topic: topic,
+                analyzedAt: new Date().toISOString(),
+                wordCount: wordCount
+              },
+              essay: essay,
+              createdAt: new Date().toISOString()
+            };
+            existingResults.push(localResult);
+            localStorage.setItem('essayResults', JSON.stringify(existingResults));
+            
+            console.log('Essay result saved to localStorage only (Firestore failed)');
+            
+            window.dispatchEvent(new CustomEvent('essayResultUpdated', { 
+              detail: { score: data.data.analysis.overallAssessment?.totalScore || 0 } 
+            }));
+          }
+        } else {
+          // Fallback to localStorage if user not authenticated
+          const essayResult = {
+            analysis: data.data.analysis,
+            metadata: {
+              topic: topic,
+              analyzedAt: new Date().toISOString(),
+              wordCount: wordCount
+            },
+            essay: essay
+          };
+          
+          const existingResults = JSON.parse(localStorage.getItem('essayResults') || '[]');
+          existingResults.push(essayResult);
+          localStorage.setItem('essayResults', JSON.stringify(existingResults));
+          
+          window.dispatchEvent(new CustomEvent('essayResultUpdated', { 
+            detail: { score: data.data.analysis.overallAssessment?.totalScore || 0 } 
+          }));
+        }
       } else {
         setError(data.error || 'Failed to analyze essay');
       }

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { 
   Brain, 
   Video, 
@@ -28,10 +28,10 @@ import {
   PieChart,
   Newspaper,
   PenTool,
-  FileUp
+  FileUp,
+  RefreshCw
 } from 'lucide-react';
 
-// Import Chart.js properly
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -45,13 +45,10 @@ import {
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 
-// Import useNavigate for redirect
 import { useNavigate } from 'react-router-dom';
-
-// Firebase logout
-import { getAuth, signOut } from 'firebase/auth';
-
-// PDF export (jsPDF + autotable)
+import { getAuth, signOut, onAuthStateChanged } from 'firebase/auth';
+import { db } from '../firebase/config';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
@@ -81,7 +78,6 @@ function getTipOfTheDay() {
   return tips[index];
 }
 
-// Styled component for action buttons
 const ActionButton = ({ text, hoverText, icon, color, onClick }) => {
   const [isHovered, setIsHovered] = useState(false);
 
@@ -120,7 +116,6 @@ const ActionButton = ({ text, hoverText, icon, color, onClick }) => {
   );
 };
 
-// Styled component for feature cards
 const FeatureCard = ({ icon, title, description, delay, onClick }) => {
   const [isVisible, setIsVisible] = useState(false);
 
@@ -150,13 +145,77 @@ const FeatureCard = ({ icon, title, description, delay, onClick }) => {
 };
 
 export default function Dashboard() {
-  const [user] = useState({ 
-    name: 'Aaryan Pradhan', 
-    email: 'aaryan@email.com', 
+  const [user, setUser] = useState({ 
+    name: 'Loading...', 
+    email: '', 
     mbaExam: 'CAT' 
   });
   const [profileEdit, setProfileEdit] = useState(false);
   const [showTitle, setShowTitle] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [stats, setStats] = useState({
+    totalQuizzes: 0,
+    avgScore: 0,
+    chaptersAttempted: 0,
+    streak: 0,
+    weeklyTarget: 10,
+    improvement: '0%',
+    weakestTopic: 'Loading...',
+    strongestTopic: 'Loading...'
+  });
+  const [leagueData, setLeagueData] = useState({
+    league: { name: 'Bronze', icon: '🥉', color: '#cd7f32' },
+    league_score: 0,
+    next_league: { name: 'Silver', min_score: 60 },
+    progress: 0
+  });
+  const [chartData, setChartData] = useState({
+    labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5', 'Week 6', 'Week 7', 'Week 8', 'Week 9', 'Week 10', 'Week 11', 'Week 12'],
+    datasets: [
+      {
+        label: 'Quantitative Aptitude',
+        data: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        borderColor: '#3b82f6',
+        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+        borderWidth: 3,
+        tension: 0.4,
+        fill: true,
+        pointBackgroundColor: '#3b82f6',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+      },
+      {
+        label: 'Verbal Ability',
+        data: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        borderColor: '#10b981',
+        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+        borderWidth: 3,
+        tension: 0.4,
+        fill: true,
+        pointBackgroundColor: '#10b981',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+      },
+      {
+        label: 'LRDI',
+        data: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        borderColor: '#f59e0b',
+        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+        borderWidth: 3,
+        tension: 0.4,
+        fill: true,
+        pointBackgroundColor: '#f59e0b',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+      }
+    ]
+  });
 
   const tipOfTheDay = getTipOfTheDay();
   const currentDate = new Date().toLocaleDateString('en-US', { 
@@ -166,34 +225,7 @@ export default function Dashboard() {
     day: 'numeric' 
   });
 
-  // Add useNavigate for redirecting
   const navigate = useNavigate();
-
-  // Hardcoded stats
-  const stats = {
-    totalQuizzes: 45,
-    avgScore: 78,
-    chaptersAttempted: 12,
-    streak: 7,
-    weeklyTarget: 10,
-    improvement: '+12%',
-    weakestTopic: 'Quantitative Aptitude',
-    strongestTopic: 'Verbal Ability'
-  };
-
-  const leagueData = {
-    league: { 
-      name: 'Silver', 
-      icon: '🥈',
-      color: '#94a3b8'
-    },
-    league_score: 78,
-    next_league: { 
-      name: 'Gold', 
-      min_score: 85 
-    },
-    progress: 65
-  };
 
   const recommendations = [
     {
@@ -243,55 +275,6 @@ export default function Dashboard() {
     }
   ];
 
-  // Chart data configuration
-  const chartData = {
-    labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5', 'Week 6', 'Week 7', 'Week 8', 'Week 9', 'Week 10', 'Week 11', 'Week 12'],
-    datasets: [
-      {
-        label: 'Quantitative Aptitude',
-        data: [62, 65, 68, 72, 70, 75, 78, 76, 80, 82, 85, 87],
-        borderColor: '#3b82f6',
-        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-        borderWidth: 3,
-        tension: 0.4,
-        fill: true,
-        pointBackgroundColor: '#3b82f6',
-        pointBorderColor: '#fff',
-        pointBorderWidth: 2,
-        pointRadius: 4,
-        pointHoverRadius: 6,
-      },
-      {
-        label: 'Verbal Ability',
-        data: [70, 72, 75, 73, 78, 80, 82, 85, 83, 86, 88, 90],
-        borderColor: '#10b981',
-        backgroundColor: 'rgba(16, 185, 129, 0.1)',
-        borderWidth: 3,
-        tension: 0.4,
-        fill: true,
-        pointBackgroundColor: '#10b981',
-        pointBorderColor: '#fff',
-        pointBorderWidth: 2,
-        pointRadius: 4,
-        pointHoverRadius: 6,
-      },
-      {
-        label: 'LRDI',
-        data: [58, 60, 63, 65, 68, 70, 72, 75, 77, 79, 81, 83],
-        borderColor: '#f59e0b',
-        backgroundColor: 'rgba(245, 158, 11, 0.1)',
-        borderWidth: 3,
-        tension: 0.4,
-        fill: true,
-        pointBackgroundColor: '#f59e0b',
-        pointBorderColor: '#fff',
-        pointBorderWidth: 2,
-        pointRadius: 4,
-        pointHoverRadius: 6,
-      }
-    ]
-  };
-
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
@@ -335,6 +318,365 @@ export default function Dashboard() {
     }
   };
 
+  // Fetch dashboard analytics data from Firestore (with localStorage fallback)
+  const fetchDashboardData = useCallback(async (userId) => {
+    setIsLoading(true);
+    try {
+      let storedEssays = [];
+      
+      // Try to fetch from Firestore first
+      try {
+        // Query without orderBy first (to avoid composite index requirement)
+        // We'll sort in memory instead
+        const essaysQuery = query(
+          collection(db, 'essayResults'),
+          where('userId', '==', userId)
+        );
+        
+        const essaysSnapshot = await getDocs(essaysQuery);
+        storedEssays = essaysSnapshot.docs.map(doc => {
+          const data = doc.data();
+          // Convert Firestore timestamps to ISO strings for compatibility
+          const createdAt = data.createdAt?.toDate?.()?.toISOString() || 
+                          data.metadata?.analyzedAt?.toDate?.()?.toISOString() || 
+                          new Date().toISOString();
+          
+          return {
+            ...data,
+            id: doc.id, // Include document ID
+            userId: data.userId || userId, // Ensure userId is set
+            metadata: {
+              ...data.metadata,
+              analyzedAt: data.metadata?.analyzedAt?.toDate?.()?.toISOString() || createdAt
+            },
+            createdAt: createdAt
+          };
+        });
+        
+        // Sort by createdAt in descending order (newest first)
+        storedEssays.sort((a, b) => {
+          const dateA = new Date(a.createdAt || a.metadata?.analyzedAt || 0);
+          const dateB = new Date(b.createdAt || b.metadata?.analyzedAt || 0);
+          return dateB - dateA; // Descending order
+        });
+        
+        console.log(`✅ Successfully fetched ${storedEssays.length} essay results from Firestore for user ${userId}`);
+        
+        // Also sync to localStorage for offline access (filtered by userId)
+        if (storedEssays.length > 0) {
+          // Get existing localStorage data and merge
+          const existingLocal = JSON.parse(localStorage.getItem('essayResults') || '[]');
+          const otherUsersData = existingLocal.filter(essay => essay.userId && essay.userId !== userId);
+          const mergedData = [...otherUsersData, ...storedEssays];
+          localStorage.setItem('essayResults', JSON.stringify(mergedData));
+        }
+      } catch (firestoreError) {
+        console.error('❌ Error fetching from Firestore:', firestoreError);
+        console.error('Error details:', {
+          code: firestoreError.code,
+          message: firestoreError.message,
+          stack: firestoreError.stack
+        });
+        
+        // Fallback to localStorage
+        const localEssays = JSON.parse(localStorage.getItem('essayResults') || '[]');
+        // Filter by userId if available in localStorage
+        storedEssays = localEssays.filter(essay => !essay.userId || essay.userId === userId);
+        
+        if (storedEssays.length > 0) {
+          console.log(`⚠️ Using ${storedEssays.length} essay results from localStorage as fallback`);
+        } else {
+          console.log('⚠️ No essay results found in Firestore or localStorage');
+        }
+      }
+      
+      // Get quiz and interview results from localStorage (can be migrated to Firestore later)
+      const storedQuizzes = JSON.parse(localStorage.getItem('quizResults') || '[]');
+      const storedInterviews = JSON.parse(localStorage.getItem('interviewResults') || '[]');
+
+      // Calculate stats from essay data
+      const totalTests = storedEssays.length + storedQuizzes.length + storedInterviews.length;
+      
+      // Calculate average scores
+      let avgScore = 0;
+      let totalScore = 0;
+      let scoreCount = 0;
+
+      storedEssays.forEach(essay => {
+        if (essay.analysis?.overallAssessment?.totalScore) {
+          totalScore += essay.analysis.overallAssessment.totalScore;
+          scoreCount++;
+        }
+      });
+
+      storedQuizzes.forEach(quiz => {
+        if (quiz.score !== undefined) {
+          totalScore += quiz.score;
+          scoreCount++;
+        }
+      });
+
+      storedInterviews.forEach(interview => {
+        if (interview.overallScore) {
+          totalScore += interview.overallScore;
+          scoreCount++;
+        }
+      });
+
+      avgScore = scoreCount > 0 ? Math.round(totalScore / scoreCount) : 0;
+
+      // Calculate improvement
+      let improvement = '0%';
+      if (storedEssays.length >= 4) {
+        const scores = storedEssays.map(e => e.analysis?.overallAssessment?.totalScore || 0);
+        const midPoint = Math.floor(scores.length / 2);
+        const firstHalf = scores.slice(0, midPoint);
+        const secondHalf = scores.slice(midPoint);
+        
+        const firstAvg = firstHalf.reduce((a, b) => a + b, 0) / firstHalf.length;
+        const secondAvg = secondHalf.reduce((a, b) => a + b, 0) / secondHalf.length;
+        
+        const improvementValue = ((secondAvg - firstAvg) / firstAvg * 100).toFixed(0);
+        improvement = improvementValue > 0 ? `+${improvementValue}%` : `${improvementValue}%`;
+      }
+
+      // Calculate streak (consecutive days with tests)
+      const allTests = [...storedEssays, ...storedQuizzes, ...storedInterviews];
+      const today = new Date();
+      let streak = 0;
+      
+      for (let i = 0; i < 30; i++) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
+        const dateStr = date.toISOString().split('T')[0];
+        
+        const hasActivity = allTests.some(item => {
+          const itemDate = new Date(item.metadata?.analyzedAt || item.completedAt || item.timestamp);
+          return itemDate.toISOString().split('T')[0] === dateStr;
+        });
+        
+        if (hasActivity) {
+          streak++;
+        } else if (i > 0) {
+          break;
+        }
+      }
+
+      // Analyze topics from essays
+      const topicScores = {};
+      storedEssays.forEach(essay => {
+        const topic = essay.metadata?.topic || 'General';
+        const score = essay.analysis?.overallAssessment?.totalScore || 0;
+        
+        if (!topicScores[topic]) {
+          topicScores[topic] = { total: 0, count: 0 };
+        }
+        topicScores[topic].total += score;
+        topicScores[topic].count += 1;
+      });
+
+      let weakestTopic = 'No data yet';
+      let strongestTopic = 'No data yet';
+      let minAvg = 100;
+      let maxAvg = 0;
+
+      Object.keys(topicScores).forEach(topic => {
+        const avg = topicScores[topic].total / topicScores[topic].count;
+        if (avg < minAvg) {
+          minAvg = avg;
+          weakestTopic = topic;
+        }
+        if (avg > maxAvg) {
+          maxAvg = avg;
+          strongestTopic = topic;
+        }
+      });
+
+      // Update stats
+      setStats({
+        totalQuizzes: totalTests,
+        avgScore,
+        chaptersAttempted: Object.keys(topicScores).length || 0,
+        streak,
+        weeklyTarget: 10,
+        improvement,
+        weakestTopic,
+        strongestTopic
+      });
+
+      // Calculate league based on total attempts and average score (progressive system)
+      // League progression: Bronze (0-2 attempts) -> Silver (3-5 attempts, avg >= 50) -> Gold (6-9 attempts, avg >= 65) -> Platinum (10+ attempts, avg >= 80) -> Diamond (15+ attempts, avg >= 90)
+      let leagueInfo = { name: 'Bronze', icon: '🥉', color: '#cd7f32' };
+      let nextLeague = { name: 'Silver', min_score: 50, min_attempts: 3 };
+      let progress = 0;
+      const totalAttempts = storedEssays.length;
+
+      if (totalAttempts >= 15 && avgScore >= 90) {
+        leagueInfo = { name: 'Diamond', icon: '💎', color: '#b9f2ff' };
+        nextLeague = { name: 'Diamond', min_score: 90, min_attempts: 15 };
+        progress = 100;
+      } else if (totalAttempts >= 10 && avgScore >= 80) {
+        leagueInfo = { name: 'Platinum', icon: '🏆', color: '#e5e4e2' };
+        nextLeague = { name: 'Diamond', min_score: 90, min_attempts: 15 };
+        // Progress based on score towards 90
+        progress = Math.min(100, ((avgScore - 80) / (90 - 80)) * 100);
+      } else if (totalAttempts >= 6 && avgScore >= 65) {
+        leagueInfo = { name: 'Gold', icon: '🥇', color: '#ffd700' };
+        nextLeague = { name: 'Platinum', min_score: 80, min_attempts: 10 };
+        // Progress based on attempts (6-10) and score (65-80)
+        const attemptProgress = Math.min(100, ((totalAttempts - 6) / (10 - 6)) * 100);
+        const scoreProgress = Math.min(100, ((avgScore - 65) / (80 - 65)) * 100);
+        progress = (attemptProgress + scoreProgress) / 2;
+      } else if (totalAttempts >= 3 && avgScore >= 50) {
+        leagueInfo = { name: 'Silver', icon: '🥈', color: '#c0c0c0' };
+        nextLeague = { name: 'Gold', min_score: 65, min_attempts: 6 };
+        // Progress based on attempts (3-6) and score (50-65)
+        const attemptProgress = Math.min(100, ((totalAttempts - 3) / (6 - 3)) * 100);
+        const scoreProgress = Math.min(100, ((avgScore - 50) / (65 - 50)) * 100);
+        progress = (attemptProgress + scoreProgress) / 2;
+      } else {
+        // Bronze league - progress based on attempts (0-3) and score (0-50)
+        const attemptProgress = Math.min(100, (totalAttempts / 3) * 100);
+        const scoreProgress = Math.min(100, (avgScore / 50) * 100);
+        progress = (attemptProgress + scoreProgress) / 2;
+      }
+
+      setLeagueData({
+        league: leagueInfo,
+        league_score: avgScore,
+        next_league: nextLeague,
+        progress: Math.round(progress)
+      });
+
+      // Calculate individual essay attempts for chart (show all attempts)
+      // Sort essays by date (oldest first)
+      const sortedEssays = [...storedEssays].sort((a, b) => {
+        const dateA = new Date(a.metadata?.analyzedAt || a.createdAt || 0);
+        const dateB = new Date(b.metadata?.analyzedAt || b.createdAt || 0);
+        return dateA - dateB;
+      });
+
+      const labels = sortedEssays.map((essay, index) => `Attempt ${index + 1}`);
+      const contentScores = sortedEssays.map(essay => 
+        Math.round((essay.analysis?.sectionScores?.content || 0) * 10)
+      );
+      const structureScores = sortedEssays.map(essay => 
+        Math.round((essay.analysis?.sectionScores?.structure || 0) * 10)
+      );
+      const languageScores = sortedEssays.map(essay => 
+        Math.round((essay.analysis?.sectionScores?.language || 0) * 10)
+      );
+
+      // If no essays yet, show empty chart with placeholder
+      if (sortedEssays.length === 0) {
+        setChartData(prevChartData => ({
+          labels: ['No attempts yet'],
+          datasets: [
+            {
+              ...prevChartData.datasets[0],
+              label: 'Content Quality',
+              data: [0]
+            },
+            {
+              ...prevChartData.datasets[1],
+              label: 'Structure',
+              data: [0]
+            },
+            {
+              ...prevChartData.datasets[2],
+              label: 'Language',
+              data: [0]
+            }
+          ]
+        }));
+      } else {
+        setChartData(prevChartData => ({
+          labels: labels,
+          datasets: [
+            {
+              ...prevChartData.datasets[0],
+              label: 'Content Quality',
+              data: contentScores
+            },
+            {
+              ...prevChartData.datasets[1],
+              label: 'Structure',
+              data: structureScores
+            },
+            {
+              ...prevChartData.datasets[2],
+              label: 'Language',
+              data: languageScores
+            }
+          ]
+        }));
+      }
+
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Fetch user data from Firebase
+  useEffect(() => {
+    const auth = getAuth();
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      if (firebaseUser) {
+        setUser({
+          name: firebaseUser.displayName || 'User',
+          email: firebaseUser.email || '',
+          mbaExam: 'CAT' // Default, can be fetched from Firestore
+        });
+        fetchDashboardData(firebaseUser.uid);
+      } else {
+        navigate('/');
+      }
+    });
+
+    return () => unsubscribe();
+  }, [navigate, fetchDashboardData]);
+
+  // Listen for essay result updates and refresh dashboard
+  useEffect(() => {
+    const handleEssayUpdate = () => {
+      const auth = getAuth();
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        fetchDashboardData(currentUser.uid);
+      }
+    };
+
+    // Listen for custom event when essay results are updated (real-time update)
+    window.addEventListener('essayResultUpdated', handleEssayUpdate);
+    
+    // Refresh when window gains focus (user navigates back to dashboard)
+    const handleFocus = () => {
+      const auth = getAuth();
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        fetchDashboardData(currentUser.uid);
+      }
+    };
+    
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      window.removeEventListener('essayResultUpdated', handleEssayUpdate);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [fetchDashboardData]);
+
+  // Refresh data
+  const refreshData = () => {
+    const auth = getAuth();
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      fetchDashboardData(currentUser.uid);
+    }
+  };
+
   useEffect(() => {
     const titleTimer = setTimeout(() => {
       setShowTitle(true);
@@ -344,23 +686,20 @@ export default function Dashboard() {
   }, []);
 
   const handleLogout = async () => {
-    // Properly logout Firebase user and clear all storage
     try {
       const auth = getAuth();
       await signOut(auth);
-      // Clear all localStorage and sessionStorage
-      localStorage.clear();
+      // Don't clear essayResults - they're stored in Firestore
+      // Only clear auth-related data
+      localStorage.removeItem('token');
       sessionStorage.clear();
-      // Redirect to homepage using React Router
       navigate('/');
-      console.log('Successfully logged out and cleared storage');
+      console.log('Successfully logged out');
     } catch (error) {
       console.error('Error during logout:', error);
     }
   };
 
-  // ---- BEGIN Download Report logic ----
-  // Export progress data (chart, stats, league, recommendations) as PDF
   const downloadReport = async () => {
     const doc = new jsPDF("p", "pt", "a4");
     const marginLeft = 40;
@@ -378,7 +717,6 @@ export default function Dashboard() {
     y += 16;
     doc.text(`Exam: ${user.mbaExam}`, marginLeft, y);
 
-    // Stats Table
     y += 28;
     doc.setFontSize(13);
     doc.text("Summary Stats", marginLeft, y);
@@ -402,7 +740,6 @@ export default function Dashboard() {
       headStyles: { fillColor: [50, 90, 155] }
     });
 
-    // League Data
     const leagueStartY = doc.autoTable.previous.finalY + 24;
     doc.setFontSize(13);
     doc.text("League Info", marginLeft, leagueStartY);
@@ -414,7 +751,6 @@ export default function Dashboard() {
     doc.text(nextLeagueText, marginLeft, leagueStartY + 12);
     doc.text(`Progress: ${leagueData.progress}%`, marginLeft, leagueStartY + 28);
 
-    // Recommendations Table
     const recStartY = leagueStartY + 44;
     doc.setFontSize(13);
     doc.text("Recommendations", marginLeft, recStartY);
@@ -428,11 +764,9 @@ export default function Dashboard() {
       headStyles: { fillColor: [66, 153, 225] }
     });
 
-    // Chart Data
     const chartY = doc.autoTable.previous.finalY + 24;
     doc.setFontSize(13);
     doc.text("Progress Chart Data", marginLeft, chartY);
-    // Table for each dataset
     const tableHead = ['Week', ...chartData.datasets.map(ds => ds.label)];
     const tableBody = [];
     for (let i = 0; i < chartData.labels.length; i++) {
@@ -452,15 +786,25 @@ export default function Dashboard() {
       headStyles: { fillColor: [100, 116, 139] }
     });
 
-    // Optionally, insert a note
     const noteY = doc.autoTable.previous.finalY + 32;
     doc.setFontSize(10);
     doc.text("Generated by Verve MBA Dashboard.", marginLeft, noteY);
 
-    // Save the PDF
     doc.save(`mba-progress-report-${user.name.toLowerCase().replace(/\s/g, "_")}-${new Date().toISOString().slice(0,10)}.pdf`);
   };
-  // ---- END Download Report logic ----
+
+  const progressPercent = (stats.streak / stats.weeklyTarget) * 100;
+
+  if (isLoading) {
+    return (
+      <section className="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen py-8 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-xl text-gray-600">Loading your dashboard...</p>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen py-8">
@@ -470,7 +814,7 @@ export default function Dashboard() {
           <div className="flex flex-col lg:flex-row gap-6 items-start">
             <div className="flex-1">
               <h1 className="text-5xl font-black text-gray-900 tracking-tight mb-4">
-                {"Welcome back, Aaryan!".split(/( )/).map((part, index) =>
+                {`Welcome back, ${user.name.split(' ')[0]}!`.split(/( )/).map((part, index) =>
                   part === " " ? (
                     <span key={index}>&nbsp;</span>
                   ) : (
@@ -497,7 +841,6 @@ export default function Dashboard() {
               
               <p className="text-xl text-gray-600 mb-6">Ready to continue your MBA preparation journey?</p>
 
-              {/* Tip of the Day */}
               <div className="bg-gradient-to-r from-yellow-50 to-amber-50 border-l-4 border-yellow-400 rounded-2xl p-6 flex items-center gap-4 shadow-sm mb-4">
                 <div className="w-12 h-12 rounded-full bg-gradient-to-br from-yellow-400 to-amber-500 text-white flex items-center justify-center">
                   <Lightbulb size={24} />
@@ -514,7 +857,6 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* User Profile Card */}
             <div className="w-full lg:w-80">
               <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
                 <div className="flex items-center gap-4 mb-4">
@@ -532,11 +874,11 @@ export default function Dashboard() {
                 
                 <div className="flex gap-2">
                   <button 
-                    onClick={() => setProfileEdit(true)}
-                    className="flex-1 bg-gray-900 hover:bg-gray-800 text-white px-3 py-2 rounded-lg transition-all shadow-sm hover:shadow flex items-center justify-center gap-2 text-sm"
+                    onClick={refreshData}
+                    className="flex-1 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg transition-all shadow-sm hover:shadow flex items-center justify-center gap-2 text-sm"
                   >
-                    <Settings size={16} />
-                    <span>Settings</span>
+                    <RefreshCw size={16} />
+                    <span>Refresh</span>
                   </button>
                   <button 
                     onClick={handleLogout}
@@ -552,7 +894,7 @@ export default function Dashboard() {
         </div>
 
         {/* Navigation Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10 ">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
           <FeatureCard
             icon={
               <div className="bg-gradient-to-br from-blue-500 to-indigo-500 rounded-xl p-3 border-2 border-blue-200">
@@ -566,7 +908,6 @@ export default function Dashboard() {
               </span>
             }
             delay={200}
-            className="transition-transform hover:-translate-y-1 hover:scale-105 hover:shadow-2xl hover:bg-gradient-to-br hover:from-blue-50 hover:to-blue-100 border-2 border-blue-200 shadow-[0_4px_20px_0_rgba(59,130,246,0.15)] shadow-lg"
             onClick={() => navigate('/resume-parser')}
           />
           <FeatureCard
@@ -582,7 +923,6 @@ export default function Dashboard() {
               </span>
             }
             delay={300}
-            className="transition-transform hover:-translate-y-1 hover:scale-105 hover:shadow-2xl hover:bg-gradient-to-br hover:from-pink-50 hover:to-purple-50 border-2 border-purple-200 shadow-[0_4px_20px_0_rgba(168,85,247,0.15)] shadow-lg"
             onClick={() => navigate('/ai-quiz')}
           />
           <FeatureCard
@@ -598,7 +938,6 @@ export default function Dashboard() {
               </span>
             }
             delay={400}
-            className="transition-transform hover:-translate-y-1 hover:scale-105 hover:shadow-2xl hover:bg-gradient-to-br hover:from-yellow-50 hover:to-amber-100 border-2 border-yellow-200 shadow-[0_4px_20px_0_rgba(251,191,36,0.15)] shadow-lg"
             onClick={() => navigate('/essay-writing')}
           />
           <FeatureCard
@@ -614,7 +953,6 @@ export default function Dashboard() {
               </span>
             }
             delay={500}
-            className="transition-transform hover:-translate-y-1 hover:scale-105 hover:shadow-2xl hover:bg-gradient-to-br hover:from-teal-50 hover:to-blue-50 border-2 border-teal-200 shadow-[0_4px_20px_0_rgba(45,212,191,0.13)]"
             onClick={() => navigate('/mba-interview')}
           />
         </div>
@@ -626,9 +964,9 @@ export default function Dashboard() {
               <div>
                 <h5 className="font-bold text-gray-800 text-xl flex items-center gap-2 mb-2">
                   <ChartLine className="text-blue-600" size={24} />
-                  Section-wise Progress Trend
+                  Essay Performance Over Time
                 </h5>
-                <p className="text-gray-600">Performance across Quant, Verbal, and LRDI over 12 weeks</p>
+                <p className="text-gray-600">Your scores across Content Quality, Structure, and Language for each attempt</p>
               </div>
               <button 
                 onClick={downloadReport}
@@ -645,13 +983,12 @@ export default function Dashboard() {
           </div>
 
           <div className="space-y-6">
-            {/* League Card */}
             <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
               <h5 className="font-bold text-gray-800 text-xl flex items-center gap-2 mb-4">
                 <Trophy className="text-amber-500" size={24} />
                 Your League
               </h5>
-              <div className="p-5 rounded-xl bg-gradient-to-br from-gray-500 via-gray-600 to-gray-700 text-white shadow-lg relative overflow-hidden">
+              <div className="p-5 rounded-xl bg-gradient-to-br from-gray-500 via-gray-600 to-gray-700 text-white shadow-lg relative overflow-hidden" style={{ background: `linear-gradient(135deg, ${leagueData.league.color} 0%, ${leagueData.league.color}dd 100%)` }}>
                 <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-5 rounded-full -mr-16 -mt-16"></div>
                 <div className="absolute bottom-0 left-0 w-24 h-24 bg-white opacity-5 rounded-full -ml-12 -mb-12"></div>
                 
@@ -671,7 +1008,9 @@ export default function Dashboard() {
                 <div className="relative bg-white/15 backdrop-blur-sm p-4 rounded-lg border border-white/20">
                   <div className="flex justify-between text-sm mb-2 font-medium">
                     <span>Next: {leagueData.next_league.name} League</span>
-                    <span>{leagueData.next_league.min_score}%</span>
+                    <span className="text-right text-xs">
+                      {leagueData.next_league.min_score}%{leagueData.next_league.min_attempts ? <><br/><span className="opacity-75">({leagueData.next_league.min_attempts} attempts)</span></> : ''}
+                    </span>
                   </div>
                   <div className="w-full h-3 bg-gray-800/40 rounded-full overflow-hidden">
                     <div 
@@ -682,14 +1021,13 @@ export default function Dashboard() {
                   <div className="flex justify-between items-center mt-2">
                     <div className="text-xs opacity-90">{leagueData.progress}% Complete</div>
                     <div className="text-xs bg-white/20 px-2 py-1 rounded-full">
-                      {leagueData.next_league.min_score - leagueData.league_score}% to go
+                      {Math.max(0, leagueData.next_league.min_score - leagueData.league_score)}% to go
                     </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Stats Card */}
             <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
               <h5 className="font-bold text-gray-800 text-xl flex items-center gap-2 mb-4">
                 <BarChart3 className="text-blue-600" size={24} />
@@ -715,7 +1053,6 @@ export default function Dashboard() {
 
         {/* Performance Insights */}
         <div className="grid lg:grid-cols-2 gap-6 mb-10">
-          {/* Main Character: Navigation Button (Learning Hub) */}
           <div className="relative bg-gradient-to-br from-blue-600 to-blue-400 rounded-2xl shadow-2xl border-4 border-blue-700 flex flex-col items-center justify-center min-h-[340px] p-0">
             <button
               className="flex flex-col items-center justify-center w-full h-full py-10 bg-blue-600 hover:bg-blue-700 transition-all duration-300 rounded-2xl shadow-2xl group border-b-4 border-blue-900"
@@ -732,7 +1069,6 @@ export default function Dashboard() {
               </span>
               <span className="text-lg text-white/90 font-semibold">Jump into learning. Your personalized resource hub.</span>
               <span className="mt-6 flex flex-col items-center w-full gap-2">
-                {/* Sub-titles for context */}
                 <span className="text-white/70 text-base flex items-center gap-2">
                   <TargetIcon className="text-red-300" size={18} />
                   Improve your <span className="font-bold ml-1">{stats.weakestTopic}</span>
@@ -747,7 +1083,6 @@ export default function Dashboard() {
             </button>
           </div>
 
-          {/* Weekly Progress */}
           <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
             <h5 className="font-bold text-gray-800 text-xl flex items-center gap-2 mb-4">
               <PieChart className="text-purple-600" size={24} />
@@ -762,7 +1097,7 @@ export default function Dashboard() {
                 <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
                   <div 
                     className="h-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full transition-all"
-                    style={{ width: `${(stats.streak / stats.weeklyTarget) * 100}%` }}
+                    style={{ width: `${Math.min(progressPercent, 100)}%` }}
                   />
                 </div>
               </div>
@@ -848,84 +1183,6 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
-
-      {/* Settings Modal */}
-      {profileEdit && (
-        <>
-          <div 
-            className="fixed inset-0 bg-black bg-opacity-50 z-40"
-            onClick={() => setProfileEdit(false)}
-          />
-          <div className="fixed inset-x-4 top-20 md:inset-x-1/4 z-50 max-w-lg mx-auto">
-            <div className="bg-white rounded-2xl shadow-2xl">
-              <div className="p-6">
-                <div className="flex justify-between items-center mb-6">
-                  <h3 className="text-xl font-bold text-gray-800">Profile Settings</h3>
-                  <button 
-                    onClick={() => setProfileEdit(false)}
-                    className="text-gray-400 hover:text-gray-600 text-xl"
-                  >
-                    ×
-                  </button>
-                </div>
-
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Name</label>
-                    <input 
-                      value={user.name} 
-                      className="w-full bg-white border-2 border-gray-200 rounded-lg p-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all" 
-                      readOnly
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
-                    <input 
-                      type="email"
-                      value={user.email}
-                      className="w-full bg-white border-2 border-gray-200 rounded-lg p-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all" 
-                      readOnly
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Target Exam</label>
-                    <div className="grid grid-cols-3 gap-2">
-                      {['CAT', 'XAT', 'CMAT', 'NMAT', 'MAT', 'ATMA'].map((exam) => (
-                        <button
-                          key={exam}
-                          className={`px-3 py-2 rounded-lg text-sm font-medium transition-all
-                            ${user.mbaExam === exam 
-                              ? 'bg-blue-600 text-white shadow-md' 
-                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-                        >
-                          {exam}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex gap-3 mt-6">
-                  <button 
-                    onClick={() => setProfileEdit(false)} 
-                    className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-lg font-medium transition-all"
-                  >
-                    Cancel
-                  </button>
-                  <button 
-                    onClick={() => setProfileEdit(false)} 
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-medium transition-all shadow-sm"
-                  >
-                    Save Changes
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
     </section>
   );
 }
