@@ -8,7 +8,7 @@ import { generateInterviewResultsWithGemini } from '../services/geminiService.js
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const TMP_DIR = path.join(__dirname, '../../tmp');
+const TMP_DIR = path.join(__dirname, '../tmp');
 const FRAMES_PER_QUESTION = 15;
 
 async function ensureTmpDir() {

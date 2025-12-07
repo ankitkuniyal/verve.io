@@ -1,3 +1,4 @@
+// geminiInterviewResults.js
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const apiKey = process.env.GEMINI_API_KEY;
@@ -26,9 +27,9 @@ const genAI = new GoogleGenerativeAI(apiKey);
  *   }
  */
 export async function generateInterviewResultsWithGemini(questionsData) {
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-1.5-flash'
-  });
+  if (!apiKey) {
+    throw new Error('GEMINI_API_KEY is not set');
+  }
 
   const systemPrompt = `
 You are an expert MBA admissions interviewer and communication coach.
@@ -72,23 +73,48 @@ Guidelines:
 - Use non-verbal metrics (framesWithFace, averageDetectionConfidence, joyScoreAverage, joyLikelihoodMode)
   to inform nonVerbalCues and confidence.
 - Scores should usually be between 60 and 95 for average candidates, unless performance is extreme.
-  `;
+`.trim();
 
   const userPrompt = `
-Here is the interview data:
+Here is the interview data (each item contains question, transcript, and non-verbal metrics):
 
 ${JSON.stringify(questionsData, null, 2)}
 
-Now, provide the evaluation in the EXACT JSON structure described, with no extra commentary.
-  `;
+Now, provide the evaluation in the EXACT JSON structure described above, with no extra commentary, text, markdown, or code fences.
+Return ONLY valid JSON.
+`.trim();
+  console.log("User prompt:", userPrompt);
+  const model = genAI.getGenerativeModel({
+    model: 'gemini-2.0-flash',
+    systemInstruction: systemPrompt
+  });
 
-  const result = await model.generateContent([
-    { role: 'user', parts: [{ text: systemPrompt + '\n\n' + userPrompt }] }
-  ]);
+  let result;
+  try {
+    result = await model.generateContent({
+      contents: [
+        {
+          role: 'user',
+          parts: [{ text: userPrompt }]
+        }
+      ]
+    });
+  } catch (err) {
+    console.error('Error calling Gemini:', err);
+    throw new Error('Gemini API call failed');
+  }
 
-  const text = result.response.text().trim();
+  let text = (result.response?.text() || '').trim();
 
-  // Attempt to parse JSON safely
+  // 🧼 Strip ```json ... ``` or ``` ... ``` if present
+  if (text.startsWith('```')) {
+    const firstBrace = text.indexOf('{');
+    const lastBrace = text.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      text = text.slice(firstBrace, lastBrace + 1);
+    }
+  }
+
   let json;
   try {
     json = JSON.parse(text);

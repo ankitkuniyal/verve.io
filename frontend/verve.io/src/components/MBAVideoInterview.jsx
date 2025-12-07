@@ -395,6 +395,13 @@ export default function MBAVideoInterview() {
     }, 1000);
   };
 
+  // TEMP: Skip prep timer and immediately go to recording
+  const skipPrepTimer = () => {
+    if (prepTimerRef.current) clearInterval(prepTimerRef.current);
+    setPrepTimeLeft(0);
+    setTimeout(() => startRecording(), 100);
+  };
+
   // Recording start
   const startRecording = () => {
     if (!streamRef.current) {
@@ -567,7 +574,7 @@ export default function MBAVideoInterview() {
         }
       });
 
-      const response = await fetch('https://verve-io.onrender.com/api/services/interview', {
+      const response = await fetch('http://localhost:3000/api/services/interview', {
         method: 'POST',
         body: formData
       });
@@ -797,13 +804,23 @@ export default function MBAVideoInterview() {
                         </button>
                       </>
                     ) : (
-                      <button
-                        onClick={skipQuestion}
-                        className="bg-slate-700 hover:bg-slate-800 text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-2 shadow-lg w-full justify-center"
-                      >
-                        <SkipForward size={18} />
-                        Skip Question
-                      </button>
+                      <>
+                        <button
+                          onClick={skipQuestion}
+                          className="bg-slate-700 hover:bg-slate-800 text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-2 shadow-lg w-full justify-center"
+                        >
+                          <SkipForward size={18} />
+                          Skip Question
+                        </button>
+                        {/* TEMP: Skip Prep Timer */}
+                        <button
+                          onClick={skipPrepTimer}
+                          className="bg-yellow-400 hover:bg-yellow-500 text-yellow-900 px-3 py-2 rounded-xl font-semibold flex items-center gap-2 shadow w-full justify-center ml-2"
+                          title="TEMP: Immediately start recording"
+                        >
+                          ⏩ Temp: Skip Prep Timer
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
