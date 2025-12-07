@@ -7,12 +7,16 @@ import path from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Initialize Vision client only if credentials are present
+// Initialize Vision client only if GOOGLE_CREDENTIALS_JSON is present
 let client = null;
 
-if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-  client = new vision.ImageAnnotatorClient();
-  console.log('✅ Google Vision initialized with service account');
+if (process.env.GOOGLE_CREDENTIALS_JSON) {
+  const credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS_JSON);
+  client = new vision.ImageAnnotatorClient({
+    credentials,
+    projectId: process.env.GOOGLE_CLOUD_PROJECT
+  });
+  console.log('✅ Vision client initialized with JSON from env');
 }
 
 function likelihoodToScore(likelihood) {
