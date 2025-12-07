@@ -20,6 +20,7 @@ import {
 
 // ✅ Import Firebase setup
 import { db } from "../firebase/config";
+import { getAuth } from "firebase/auth";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
 export default function PDFTextReader() {
@@ -146,12 +147,21 @@ export default function PDFTextReader() {
       .filter((line) => line.trim() !== "");
   };
 
-  // ✅ Save extracted data to Firebase Firestore
+  // ✅ Save extracted data to Firebase Firestore under user's subcollection
   const saveToFirebase = async (resumeData) => {
     try {
       setUploadStatus("Saving to Firebase...");
-      await addDoc(collection(db, "resumes"), {
+      const auth = getAuth();
+      const currentUser = auth.currentUser;
+      
+      if (!currentUser) {
+        throw new Error("User not authenticated");
+      }
+      
+      // Save to users/{userId}/resumes subcollection
+      await addDoc(collection(db, "users", currentUser.uid, "resumes"), {
         ...resumeData,
+        userId: currentUser.uid,
         timestamp: serverTimestamp(),
       });
       setUploadStatus("✅ Resume data saved to Firebase successfully!");

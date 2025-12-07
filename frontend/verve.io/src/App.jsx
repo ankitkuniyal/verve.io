@@ -13,6 +13,7 @@ import ErrorBoundary from './components/ui/ErrorBoundary';
 import AIQuizPlatform from './components/AIQuizPlatform';
 import LearningHub from './components/LearningHub';
 import LandingPage from './components/LandingPage';
+import Profile from './components/Profile';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -117,6 +118,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <MBAVideoInterview />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <Profile />
                 </ProtectedRoute>
               }
             />

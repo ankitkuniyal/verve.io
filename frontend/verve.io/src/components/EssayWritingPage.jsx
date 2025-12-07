@@ -88,8 +88,11 @@ const EssayWritingPage = () => {
           };
           
           try {
-            // Save to Firestore
-            const docRef = await addDoc(collection(db, 'essayResults'), essayResult);
+            // Save to Firestore under user's subcollection: users/{userId}/essayResults
+            const docRef = await addDoc(
+              collection(db, 'users', currentUser.uid, 'essayResults'), 
+              essayResult
+            );
             console.log('Essay result saved to Firestore with ID:', docRef.id);
             
             // Also save to localStorage as backup (with userId for filtering)

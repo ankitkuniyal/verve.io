@@ -29,7 +29,7 @@ import {
   Newspaper,
   PenTool,
   FileUp,
-  RefreshCw
+  User
 } from 'lucide-react';
 
 import {
@@ -48,7 +48,7 @@ import { Line } from 'react-chartjs-2';
 import { useNavigate } from 'react-router-dom';
 import { getAuth, signOut, onAuthStateChanged } from 'firebase/auth';
 import { db } from '../firebase/config';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, getDocs, doc, getDoc } from 'firebase/firestore';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
@@ -150,7 +150,6 @@ export default function Dashboard() {
     email: '', 
     mbaExam: 'CAT' 
   });
-  const [profileEdit, setProfileEdit] = useState(false);
   const [showTitle, setShowTitle] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState({
@@ -326,11 +325,9 @@ export default function Dashboard() {
       
       // Try to fetch from Firestore first
       try {
-        // Query without orderBy first (to avoid composite index requirement)
-        // We'll sort in memory instead
+        // Fetch from user's subcollection: users/{userId}/essayResults
         const essaysQuery = query(
-          collection(db, 'essayResults'),
-          where('userId', '==', userId)
+          collection(db, 'users', userId, 'essayResults')
         );
         
         const essaysSnapshot = await getDocs(essaysQuery);
@@ -619,16 +616,41 @@ export default function Dashboard() {
     }
   }, []);
 
-  // Fetch user data from Firebase
+  // Fetch user data from Firebase and profile from Firestore
   useEffect(() => {
     const auth = getAuth();
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        setUser({
-          name: firebaseUser.displayName || 'User',
-          email: firebaseUser.email || '',
-          mbaExam: 'CAT' // Default, can be fetched from Firestore
-        });
+        // Load profile from Firestore: users/{userId}
+        try {
+          const profileRef = doc(db, 'users', firebaseUser.uid);
+          const profileSnap = await getDoc(profileRef);
+          
+          if (profileSnap.exists()) {
+            const profileData = profileSnap.data();
+            setUser({
+              name: profileData.name || firebaseUser.displayName || 'User',
+              email: profileData.email || firebaseUser.email || '',
+              mbaExam: profileData.mbaExam || 'CAT'
+            });
+          } else {
+            // Use Firebase auth data as fallback
+            setUser({
+              name: firebaseUser.displayName || 'User',
+              email: firebaseUser.email || '',
+              mbaExam: 'CAT'
+            });
+          }
+        } catch (error) {
+          console.error('Error loading profile:', error);
+          // Fallback to Firebase auth data
+          setUser({
+            name: firebaseUser.displayName || 'User',
+            email: firebaseUser.email || '',
+            mbaExam: 'CAT'
+          });
+        }
+        
         fetchDashboardData(firebaseUser.uid);
       } else {
         navigate('/');
@@ -637,6 +659,36 @@ export default function Dashboard() {
 
     return () => unsubscribe();
   }, [navigate, fetchDashboardData]);
+
+  // Listen for profile updates
+  useEffect(() => {
+    const handleProfileUpdate = async () => {
+      const auth = getAuth();
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        try {
+          const profileRef = doc(db, 'users', currentUser.uid);
+          const profileSnap = await getDoc(profileRef);
+          
+          if (profileSnap.exists()) {
+            const profileData = profileSnap.data();
+            setUser({
+              name: profileData.name || currentUser.displayName || 'User',
+              email: profileData.email || currentUser.email || '',
+              mbaExam: profileData.mbaExam || 'CAT'
+            });
+          }
+        } catch (error) {
+          console.error('Error refreshing profile:', error);
+        }
+      }
+    };
+
+    window.addEventListener('profileUpdated', handleProfileUpdate);
+    return () => {
+      window.removeEventListener('profileUpdated', handleProfileUpdate);
+    };
+  }, []);
 
   // Listen for essay result updates and refresh dashboard
   useEffect(() => {
@@ -667,15 +719,6 @@ export default function Dashboard() {
       window.removeEventListener('focus', handleFocus);
     };
   }, [fetchDashboardData]);
-
-  // Refresh data
-  const refreshData = () => {
-    const auth = getAuth();
-    const currentUser = auth.currentUser;
-    if (currentUser) {
-      fetchDashboardData(currentUser.uid);
-    }
-  };
 
   useEffect(() => {
     const titleTimer = setTimeout(() => {
@@ -874,11 +917,11 @@ export default function Dashboard() {
                 
                 <div className="flex gap-2">
                   <button 
-                    onClick={refreshData}
-                    className="flex-1 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg transition-all shadow-sm hover:shadow flex items-center justify-center gap-2 text-sm"
+                    onClick={() => navigate('/profile')}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg transition-all shadow-sm hover:shadow flex items-center justify-center gap-2 text-sm"
                   >
-                    <RefreshCw size={16} />
-                    <span>Refresh</span>
+                    <User size={16} />
+                    <span>Profile</span>
                   </button>
                   <button 
                     onClick={handleLogout}
