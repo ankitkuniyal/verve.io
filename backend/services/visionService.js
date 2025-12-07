@@ -7,8 +7,13 @@ import path from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Initialize Vision client
-const client = new vision.ImageAnnotatorClient();
+// Initialize Vision client only if credentials are present
+let client = null;
+
+if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+  client = new vision.ImageAnnotatorClient();
+  console.log('✅ Google Vision initialized with service account');
+}
 
 function likelihoodToScore(likelihood) {
   switch (likelihood) {
@@ -23,14 +28,20 @@ function likelihoodToScore(likelihood) {
 
 async function analyzeFaceFromBuffer(imageBuffer) {
   try {
+    console.debug('[VisionService] Analyzing face from buffer of length:', imageBuffer?.length);
     const [result] = await client.faceDetection({
       image: { content: imageBuffer }
     });
     
     const faces = result.faceAnnotations || [];
+    console.debug(`[VisionService] Detected ${faces.length} face(s)`);
     if (!faces.length) return null;
     
     const face = faces[0];
+    console.debug('[VisionService] Face results:', {
+      detectionConfidence: face.detectionConfidence,
+      joyLikelihood: face.joyLikelihood
+    });
     return {
       detectionConfidence: face.detectionConfidence || 0,
       joyLikelihood: face.joyLikelihood || 'UNKNOWN'
@@ -42,7 +53,9 @@ async function analyzeFaceFromBuffer(imageBuffer) {
 }
 
 export async function analyzeFramesNonVerbal(frameBuffers = []) {
+  console.debug('[VisionService] Starting non-verbal analysis for', frameBuffers?.length || 0, 'frames');
   if (!frameBuffers || !frameBuffers.length) {
+    console.debug('[VisionService] No frames provided for analysis.');
     return {
       framesAnalyzed: 0,
       framesWithFace: 0,
@@ -54,11 +67,15 @@ export async function analyzeFramesNonVerbal(frameBuffers = []) {
   
   const results = [];
   
-  for (const buf of frameBuffers) {
+  for (const [i, buf] of frameBuffers.entries()) {
     try {
+      console.debug(`[VisionService] Analyzing frame ${i + 1}/${frameBuffers.length}`);
       const face = await analyzeFaceFromBuffer(buf);
       if (face) {
         results.push(face);
+        console.debug(`[VisionService] Frame ${i + 1}: Face found (conf ${face.detectionConfidence}, joy ${face.joyLikelihood})`);
+      } else {
+        console.debug(`[VisionService] Frame ${i + 1}: No face detected`);
       }
     } catch (err) {
       console.error('Vision error on frame:', err.message);
@@ -66,6 +83,7 @@ export async function analyzeFramesNonVerbal(frameBuffers = []) {
   }
   
   if (!results.length) {
+    console.debug('[VisionService] No faces detected in any frames.');
     return {
       framesAnalyzed: frameBuffers.length,
       framesWithFace: 0,
@@ -94,6 +112,14 @@ export async function analyzeFramesNonVerbal(frameBuffers = []) {
       joyMode = likelihood;
     }
   }
+  
+  console.debug('[VisionService] Analysis summary:', {
+    framesAnalyzed: frameBuffers.length,
+    framesWithFace,
+    averageDetectionConfidence: avgDetection,
+    joyScoreAverage: avgJoyScore,
+    joyLikelihoodMode: joyMode
+  });
   
   return {
     framesAnalyzed: frameBuffers.length,
