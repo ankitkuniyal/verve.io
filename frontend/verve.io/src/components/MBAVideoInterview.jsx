@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Camera, Video, Clock, CheckCircle, Play, Square, SkipForward, RefreshCw, BarChart3, Download } from 'lucide-react';
 
-
 const MBA_QUESTIONS = [
   {
     id: 1,
@@ -42,9 +41,9 @@ const MBA_QUESTIONS = [
   }
 ];
 
-// Mock analysis results based on common interview performance patterns
-const GENERATE_RESULTS = () => ({
-  overallScore: Math.floor(Math.random() * 30) + 70, // 70-100
+// Fallback mock results
+const GENERATE_MOCK_RESULTS = () => ({
+  overallScore: Math.floor(Math.random() * 30) + 70,
   verbalCommunication: {
     score: Math.floor(Math.random() * 25) + 75,
     feedback: [
@@ -140,8 +139,12 @@ export default function MBAVideoInterview() {
   const [showResults, setShowResults] = useState(false);
   const [results, setResults] = useState(null);
   const [isGeneratingResults, setIsGeneratingResults] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [apiError, setApiError] = useState(null);
+  const [browserWarning, setBrowserWarning] = useState('');
 
-  // ✅ NEW: store per-question recorded data (video + transcript + question)
+  // Store per-question recorded data
   const [answers, setAnswers] = useState([]);
 
   const videoRef = useRef(null);
@@ -151,13 +154,34 @@ export default function MBAVideoInterview() {
   const recognitionRef = useRef(null);
   const transcriptRef = useRef('');
 
-  // ✅ NEW: keep last transcript & question safe for recorder.onstop
+  // Keep last transcript & question safe
   const lastTranscriptRef = useRef('');
   const lastQuestionRef = useRef(null);
 
   const currentQuestion = MBA_QUESTIONS[currentQuestionIndex];
 
-  // ✅ SPEECH RECOGNITION SETUP
+  // Check browser compatibility on mount
+  useEffect(() => {
+    const isChrome = /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor);
+    const isFirefox = /Firefox/.test(navigator.userAgent);
+    const isEdge = /Edg/.test(navigator.userAgent);
+    const isSafari = /Safari/.test(navigator.userAgent) && /Apple Computer/.test(navigator.vendor);
+    
+    let warning = '';
+    if (isSafari) {
+      warning = '⚠️ Safari has limited MediaRecorder support. For best results, use Chrome, Firefox, or Edge.';
+    } else if (!isChrome && !isFirefox && !isEdge) {
+      warning = '⚠️ For best results, please use Chrome, Firefox, or Edge browsers.';
+    }
+    setBrowserWarning(warning);
+
+    // Check for MediaRecorder support
+    if (!window.MediaRecorder) {
+      setBrowserWarning('❌ Your browser does not support video recording. Please use Chrome, Firefox, or Edge.');
+    }
+  }, []);
+
+  // SPEECH RECOGNITION SETUP
   useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     
@@ -171,6 +195,7 @@ export default function MBAVideoInterview() {
     recognition.continuous = true;
     recognition.interimResults = true;
     recognition.lang = 'en-US';
+    recognition.maxAlternatives = 1;
 
     recognition.onstart = () => {
       console.log('🎤 Speech recognition started');
@@ -233,7 +258,7 @@ export default function MBAVideoInterview() {
     };
   }, []);
 
-  // ✅ Start/stop speech recognition based on recording state
+  // Start/stop speech recognition based on recording state
   useEffect(() => {
     if (!recognitionRef.current || !speechRecognitionSupported) return;
 
@@ -256,7 +281,7 @@ export default function MBAVideoInterview() {
     }
   }, [stage, isListening, speechRecognitionSupported]);
 
-  // ✅ Reset transcript when moving to new question
+  // Reset transcript when moving to new question
   useEffect(() => {
     if (stage === 'preparing') {
       transcriptRef.current = '';
@@ -264,10 +289,11 @@ export default function MBAVideoInterview() {
     }
   }, [currentQuestionIndex, stage]);
 
-  // ✅ CAMERA INITIALIZATION
+  // CAMERA INITIALIZATION
   const startCamera = async () => {
     setIsLoadingCamera(true);
     setCameraError('');
+    setApiError(null);
 
     try {
       if (streamRef.current) {
@@ -279,9 +305,14 @@ export default function MBAVideoInterview() {
         video: {
           width: { ideal: 1280 },
           height: { ideal: 720 },
-          facingMode: 'user'
+          facingMode: 'user',
+          frameRate: { ideal: 30 }
         },
-        audio: true
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          sampleRate: 48000
+        }
       };
 
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -395,51 +426,64 @@ export default function MBAVideoInterview() {
     }, 1000);
   };
 
-  // TEMP: Skip prep timer and immediately go to recording
+  // Skip prep timer and immediately go to recording
   const skipPrepTimer = () => {
     if (prepTimerRef.current) clearInterval(prepTimerRef.current);
     setPrepTimeLeft(0);
     setTimeout(() => startRecording(), 100);
   };
 
-  // Recording start
+  // Optimized video recording start
   const startRecording = () => {
     if (!streamRef.current) {
       console.error('No stream available for recording');
+      alert('Please enable camera first');
       return;
     }
 
     try {
-      const mimeType = MediaRecorder.isTypeSupported('video/webm; codecs=vp9') 
-        ? 'video/webm; codecs=vp9'
-        : MediaRecorder.isTypeSupported('video/webm; codecs=vp8') 
-        ? 'video/webm; codecs=vp8'
-        : 'video/webm';
+      // Better MIME type detection with fallbacks
+      const mimeTypes = [
+        'video/webm;codecs=vp9,opus',
+        'video/webm;codecs=vp8,opus',
+        'video/webm;codecs=h264,opus',
+        'video/webm'
+      ];
+      
+      let selectedMimeType = 'video/webm';
+      for (const mime of mimeTypes) {
+        if (MediaRecorder.isTypeSupported(mime)) {
+          selectedMimeType = mime;
+          break;
+        }
+      }
+
+      console.log('🎥 Using MIME type:', selectedMimeType);
 
       const recorder = new MediaRecorder(streamRef.current, { 
-        mimeType,
-        videoBitsPerSecond: 2500000
+        mimeType: selectedMimeType,
+        videoBitsPerSecond: 2_500_000,
+        audioBitsPerSecond: 128_000
       });
       
       const recordedChunks = [];
 
-      // ✅ keep track of the question being answered
+      // Keep track of the question being answered
       lastQuestionRef.current = currentQuestion;
       
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) {
           recordedChunks.push(e.data);
-          console.log('Recording chunk:', e.data.size, 'bytes');
         }
       };
 
       recorder.onstop = () => {
-        const blob = new Blob(recordedChunks, { type: mimeType });
-        console.log('Recording completed. Total size:', blob.size, 'bytes');
+        const blob = new Blob(recordedChunks, { type: selectedMimeType });
+        console.log('Recording completed. Size:', Math.round(blob.size / 1024 / 1024 * 100) / 100, 'MB');
 
         const transcriptForThisQuestion = lastTranscriptRef.current || transcriptRef.current || '';
 
-        // ✅ store this question's data to send later
+        // Store this question's data
         setAnswers(prev => [
           ...prev,
           {
@@ -458,7 +502,7 @@ export default function MBAVideoInterview() {
         alert('Recording failed. Please try again.');
       };
 
-      recorder.start(1000);
+      recorder.start(1000); // Collect data every second
       setMediaRecorder(recorder);
       setIsRecording(true);
       setStage('recording');
@@ -486,7 +530,7 @@ export default function MBAVideoInterview() {
       recordTimerRef.current = null;
     }
 
-    // ✅ capture transcript for this question before it gets reset
+    // Capture transcript for this question
     lastTranscriptRef.current = transcriptRef.current;
 
     // Stop speech recognition
@@ -541,7 +585,44 @@ export default function MBAVideoInterview() {
     }
   };
 
-  // ✅ NEW: call backend with videos + transcripts + questions
+  // Compress video if too large
+  const compressVideo = async (blob) => {
+    return new Promise((resolve) => {
+      // Simple compression - reduce quality if too large
+      if (blob.size > 50 * 1024 * 1024) { // > 50MB
+        console.log('Video file is large. Reducing quality...');
+        // For now, just return the blob
+        // In production, implement proper compression with FFmpeg or similar
+        resolve(blob);
+      } else {
+        resolve(blob);
+      }
+    });
+  };
+
+  // Generate results with retry logic
+  const generateResultsWithRetry = async (retries = 3) => {
+    for (let i = 0; i < retries; i++) {
+      try {
+        await generateResults();
+        setApiError(null);
+        return;
+      } catch (err) {
+        const errorMsg = `Attempt ${i + 1} failed: ${err.message}`;
+        setApiError(errorMsg);
+        console.error(errorMsg);
+        
+        if (i < retries - 1) {
+          // Exponential backoff
+          const delay = 2000 * (i + 1);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+    }
+    throw new Error('All retry attempts failed');
+  };
+
+  // Main function to call backend
   const generateResults = async () => {
     if (!answers.length) {
       alert('No recorded answers found to analyze.');
@@ -549,62 +630,112 @@ export default function MBAVideoInterview() {
     }
 
     setIsGeneratingResults(true);
+    setUploadProgress(0);
+    setApiError(null);
 
     try {
       const formData = new FormData();
 
-      // Metadata as JSON: question + transcript (no blobs here)
+      // Create metadata in EXACT format backend expects
       const metadata = answers.map((ans, idx) => ({
         index: idx,
-        questionId: ans.questionId,
-        question: ans.question,
-        transcript: ans.transcript
+        questionId: ans.questionId || idx + 1,
+        question: ans.question || MBA_QUESTIONS[idx]?.question || `Question ${idx + 1}`,
+        transcript: ans.transcript || ""
       }));
 
+      console.log('📋 Sending metadata:', metadata);
       formData.append('metadata', JSON.stringify(metadata));
 
-      // Attach each video blob
-      answers.forEach((ans, idx) => {
-        if (ans.videoBlob) {
+      // Attach each video blob with proper naming
+      for (let idx = 0; idx < answers.length; idx++) {
+        const ans = answers[idx];
+        if (ans.videoBlob && ans.videoBlob.size > 0) {
+          const compressedBlob = await compressVideo(ans.videoBlob);
           formData.append(
             `video_${idx}`,
-            ans.videoBlob,
+            compressedBlob,
             `question_${ans.questionId || idx}.webm`
           );
+          console.log(`📹 Added video_${idx}, size: ${Math.round(compressedBlob.size / 1024 / 1024 * 100) / 100}MB`);
+        } else {
+          console.warn(`⚠️ No video blob for question ${idx}`);
+        }
+      }
+
+      console.log('📤 Sending form data with:', {
+        metadataCount: metadata.length,
+        videoCount: answers.filter(a => a.videoBlob).length,
+        totalSize: answers.reduce((sum, a) => sum + (a.videoBlob?.size || 0), 0) / (1024 * 1024)
+      });
+
+      // Use XMLHttpRequest for progress tracking
+      const xhr = new XMLHttpRequest();
+      
+      xhr.upload.addEventListener('progress', (event) => {
+        if (event.lengthComputable) {
+          const percentComplete = (event.loaded / event.total) * 100;
+          setUploadProgress(Math.round(percentComplete));
         }
       });
 
-      const response = await fetch('http://localhost:3000/api/services/interview', {
-        method: 'POST',
-        body: formData
+      const response = await new Promise((resolve, reject) => {
+        xhr.onreadystatechange = () => {
+          if (xhr.readyState === 4) {
+            if (xhr.status === 200) {
+              resolve(xhr.responseText);
+            } else {
+              reject(new Error(`Server responded with status ${xhr.status}`));
+            }
+          }
+        };
+        
+        xhr.onerror = () => {
+          reject(new Error('Network error occurred while uploading'));
+        };
+        
+        xhr.open('POST', 'https://verve-io.onrender.com/api/services/interview');
+        xhr.send(formData);
       });
 
-      if (!response.ok) {
-        throw new Error(`Server responded with status ${response.status}`);
+      console.log('📥 Raw response:', response);
+
+      let data;
+      try {
+        data = JSON.parse(response);
+      } catch (parseError) {
+        console.error('Failed to parse response:', parseError, response);
+        throw new Error('Invalid JSON response from server');
       }
 
-      const data = await response.json();
+      // Handle different response formats
+      if (data.error) {
+        throw new Error(data.error);
+      } else if (data.evaluation) {
+        // Backend returns { success, evaluation, rawData }
+        setResults(data.evaluation);
+      } else if (data.overallScore) {
+        // Backend returns evaluation directly
+        setResults(data);
+      } else {
+        console.error('Unexpected response format:', data);
+        throw new Error('Invalid response format from server');
+      }
 
-      // 👉 Expecting backend to return JSON in the SAME SHAPE as GENERATE_RESULTS
-      // {
-      //   overallScore,
-      //   verbalCommunication: { score, feedback[], recommendations[] },
-      //   confidence: { ... },
-      //   contentQuality: { ... },
-      //   nonVerbalCues: { ... },
-      //   keyStrengths: [],
-      //   areasForImprovement: [],
-      //   finalRecommendations: []
-      // }
-
-      setResults(data);
       setShowResults(true);
+      setUploadProgress(100);
+      
     } catch (err) {
-      console.error('Error generating results from backend:', err);
-      alert('Failed to generate results from server. Using mock results instead.');
-      const analysisResults = GENERATE_RESULTS();
+      console.error('❌ Error generating results:', err);
+      setApiError(`Failed to generate results: ${err.message}`);
+      
+      // Fallback to mock results
+      const analysisResults = GENERATE_MOCK_RESULTS();
       setResults(analysisResults);
       setShowResults(true);
+      
+      // Don't throw here, let retry logic handle it
+      throw err;
     } finally {
       setIsGeneratingResults(false);
     }
@@ -619,13 +750,15 @@ export default function MBAVideoInterview() {
     setTranscript('');
     transcriptRef.current = '';
     setAnswers([]);
+    setUploadProgress(0);
+    setApiError(null);
   };
 
   const downloadResults = () => {
     const element = document.createElement("a");
     const file = new Blob([JSON.stringify(results, null, 2)], { type: 'application/json' });
     element.href = URL.createObjectURL(file);
-    element.download = "mba-interview-results.json";
+    element.download = `mba-interview-results-${new Date().toISOString().split('T')[0]}.json`;
     document.body.appendChild(element);
     element.click();
     document.body.removeChild(element);
@@ -671,6 +804,20 @@ export default function MBAVideoInterview() {
             Back to Dashboard
           </Link>
         </div>
+        
+        {/* Browser Warning */}
+        {browserWarning && (
+          <div className="mb-6 bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded-xl">
+            <p className="text-yellow-800 font-medium">{browserWarning}</p>
+          </div>
+        )}
+        
+        {/* API Error */}
+        {apiError && (
+          <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-xl">
+            <p className="text-red-800 font-medium">{apiError}</p>
+          </div>
+        )}
         
         {/* MAIN BODY */}
         <div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-slate-100">
@@ -725,6 +872,7 @@ export default function MBAVideoInterview() {
                   <li>• Grant camera and microphone permissions when the browser prompts you</li>
                   <li>• Use Chrome, Firefox, or Edge for best compatibility</li>
                   <li>• Make sure you're on HTTPS (required for camera access)</li>
+                  <li>• Good lighting and a quiet environment will improve your analysis</li>
                 </ul>
               </div>
             </div>
@@ -812,13 +960,12 @@ export default function MBAVideoInterview() {
                           <SkipForward size={18} />
                           Skip Question
                         </button>
-                        {/* TEMP: Skip Prep Timer */}
                         <button
                           onClick={skipPrepTimer}
                           className="bg-yellow-400 hover:bg-yellow-500 text-yellow-900 px-3 py-2 rounded-xl font-semibold flex items-center gap-2 shadow w-full justify-center ml-2"
-                          title="TEMP: Immediately start recording"
+                          title="Start recording immediately"
                         >
-                          ⏩ Temp: Skip Prep Timer
+                          ⏩ Skip Prep Time
                         </button>
                       </>
                     )}
@@ -932,7 +1079,7 @@ export default function MBAVideoInterview() {
 
               <div className="flex gap-4 justify-center">
                 <button
-                  onClick={generateResults}
+                  onClick={() => generateResultsWithRetry()}
                   disabled={isGeneratingResults}
                   className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-10 py-4 rounded-2xl font-bold text-lg transition-all hover:scale-105 shadow-lg flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -987,16 +1134,16 @@ export default function MBAVideoInterview() {
                     <BarChart3 size={20} />
                     Detailed Performance Metrics
                   </h3>
-                  <ScoreBar score={results.verbalCommunication.score} label="Verbal Communication" />
-                  <ScoreBar score={results.confidence.score} label="Confidence & Presence" />
-                  <ScoreBar score={results.contentQuality.score} label="Content Quality" />
-                  <ScoreBar score={results.nonVerbalCues.score} label="Non-Verbal Cues" />
+                  <ScoreBar score={results.verbalCommunication?.score || 0} label="Verbal Communication" />
+                  <ScoreBar score={results.confidence?.score || 0} label="Confidence & Presence" />
+                  <ScoreBar score={results.contentQuality?.score || 0} label="Content Quality" />
+                  <ScoreBar score={results.nonVerbalCues?.score || 0} label="Non-Verbal Cues" />
                 </div>
 
                 <div className="bg-white rounded-2xl p-6 shadow-lg border border-slate-200">
                   <h3 className="text-xl font-bold text-slate-800 mb-4">🎯 Key Strengths</h3>
                   <ul className="space-y-2">
-                    {results.keyStrengths.map((strength, index) => (
+                    {(results.keyStrengths || []).map((strength, index) => (
                       <li key={index} className="flex items-start gap-2 text-slate-700">
                         <CheckCircle size={16} className="text-green-500 mt-1 flex-shrink-0" />
                         <span>{strength}</span>
@@ -1011,7 +1158,7 @@ export default function MBAVideoInterview() {
                 <div className="bg-white rounded-2xl p-6 shadow-lg border border-slate-200">
                   <h3 className="text-xl font-bold text-slate-800 mb-4">📈 Areas for Improvement</h3>
                   <ul className="space-y-3">
-                    {results.areasForImprovement.map((area, index) => (
+                    {(results.areasForImprovement || []).map((area, index) => (
                       <li key={index} className="flex items-start gap-2 text-slate-700">
                         <div className="w-2 h-2 bg-orange-500 rounded-full mt-2 flex-shrink-0" />
                         <span>{area}</span>
@@ -1023,7 +1170,7 @@ export default function MBAVideoInterview() {
                 <div className="bg-white rounded-2xl p-6 shadow-lg border border-slate-200">
                   <h3 className="text-xl font-bold text-slate-800 mb-4">💡 Final Recommendations</h3>
                   <ul className="space-y-3">
-                    {results.finalRecommendations.map((rec, index) => (
+                    {(results.finalRecommendations || []).map((rec, index) => (
                       <li key={index} className="flex items-start gap-2 text-slate-700">
                         <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0" />
                         <span>{rec}</span>
@@ -1045,7 +1192,7 @@ export default function MBAVideoInterview() {
                             {key.replace(/([A-Z])/g, ' $1').trim()}
                           </h4>
                           <div className="text-sm text-slate-600 space-y-1">
-                            {value.feedback.map((item, idx) => (
+                            {(value.feedback || []).map((item, idx) => (
                               <div key={idx} className="flex items-start gap-2">
                                 <div className="w-1 h-1 bg-green-500 rounded-full mt-2 flex-shrink-0" />
                                 <span>{item}</span>
@@ -1081,8 +1228,40 @@ export default function MBAVideoInterview() {
           )}
         </div>
 
+        {/* Loading Overlay */}
+        {isGeneratingResults && (
+          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+            <div className="bg-white p-10 rounded-2xl text-center shadow-2xl max-w-md">
+              <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto mb-6"></div>
+              <p className="text-2xl font-bold text-slate-800 mb-2">Analyzing Your Interview</p>
+              <p className="text-slate-600 mb-6">
+                Processing {answers.length} video responses with AI analysis...
+              </p>
+              
+              {uploadProgress > 0 && (
+                <div className="mb-4">
+                  <div className="flex justify-between text-sm text-slate-600 mb-1">
+                    <span>Uploading videos...</span>
+                    <span>{uploadProgress}%</span>
+                  </div>
+                  <div className="w-full bg-slate-200 rounded-full h-3">
+                    <div 
+                      className="bg-gradient-to-r from-blue-500 to-indigo-600 h-3 rounded-full transition-all duration-300"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+              
+              <p className="text-sm text-slate-500">
+                This may take 30-60 seconds depending on video length and server load
+              </p>
+            </div>
+          </div>
+        )}
+
         <div className="text-center mt-4 text-slate-600 text-xs">
-          🔒 Your privacy matters. All recordings are encrypted and reviewed only by authorized staff.
+          🔒 Your privacy matters. All recordings are encrypted and processed securely.
         </div>
       </div>
     </div>

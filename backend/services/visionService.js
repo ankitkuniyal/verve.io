@@ -1,30 +1,15 @@
+// visionAnalysis.js
 import vision from '@google-cloud/vision';
+import { fileURLToPath } from 'url';
+import path from 'path';
 
+// Fix for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Initialize Vision client
 const client = new vision.ImageAnnotatorClient();
 
-/**
- * Analyze ONE image buffer with Vision Face Detection.
- */
-async function analyzeFaceFromBuffer(imageBuffer) {
-  const [result] = await client.faceDetection({
-    image: { content: imageBuffer }
-  });
-
-  const faces = result.faceAnnotations || [];
-  if (!faces.length) {
-    return null;
-  }
-
-  const face = faces[0];
-  return {
-    detectionConfidence: face.detectionConfidence || 0,
-    joyLikelihood: face.joyLikelihood || 'UNKNOWN'
-  };
-}
-
-/**
- * Convert likelihood string to a numeric score (rough mapping)
- */
 function likelihoodToScore(likelihood) {
   switch (likelihood) {
     case 'VERY_UNLIKELY': return 0;
@@ -32,15 +17,32 @@ function likelihoodToScore(likelihood) {
     case 'POSSIBLE': return 2;
     case 'LIKELY': return 3;
     case 'VERY_LIKELY': return 4;
-    default: return 2; // UNKNOWN
+    default: return 2;
   }
 }
 
-/**
- * Analyze multiple frames and return aggregated non-verbal metrics.
- */
+async function analyzeFaceFromBuffer(imageBuffer) {
+  try {
+    const [result] = await client.faceDetection({
+      image: { content: imageBuffer }
+    });
+    
+    const faces = result.faceAnnotations || [];
+    if (!faces.length) return null;
+    
+    const face = faces[0];
+    return {
+      detectionConfidence: face.detectionConfidence || 0,
+      joyLikelihood: face.joyLikelihood || 'UNKNOWN'
+    };
+  } catch (error) {
+    console.error('Vision API error:', error.message);
+    return null;
+  }
+}
+
 export async function analyzeFramesNonVerbal(frameBuffers = []) {
-  if (!frameBuffers.length) {
+  if (!frameBuffers || !frameBuffers.length) {
     return {
       framesAnalyzed: 0,
       framesWithFace: 0,
@@ -49,9 +51,9 @@ export async function analyzeFramesNonVerbal(frameBuffers = []) {
       joyLikelihoodMode: 'UNKNOWN'
     };
   }
-
+  
   const results = [];
-
+  
   for (const buf of frameBuffers) {
     try {
       const face = await analyzeFaceFromBuffer(buf);
@@ -62,7 +64,7 @@ export async function analyzeFramesNonVerbal(frameBuffers = []) {
       console.error('Vision error on frame:', err.message);
     }
   }
-
+  
   if (!results.length) {
     return {
       framesAnalyzed: frameBuffers.length,
@@ -72,21 +74,18 @@ export async function analyzeFramesNonVerbal(frameBuffers = []) {
       joyLikelihoodMode: 'UNKNOWN'
     };
   }
-
+  
   const framesWithFace = results.length;
-  const avgDetection =
-    results.reduce((sum, r) => sum + (r.detectionConfidence || 0), 0) /
-    framesWithFace;
-
-  const joyScores = results.map((r) => likelihoodToScore(r.joyLikelihood));
-  const avgJoyScore =
-    joyScores.reduce((sum, s) => sum + s, 0) / joyScores.length;
-
-  // mode of joyLikelihood
+  const avgDetection = results.reduce((sum, r) => sum + (r.detectionConfidence || 0), 0) / framesWithFace;
+  
+  const joyScores = results.map(r => likelihoodToScore(r.joyLikelihood));
+  const avgJoyScore = joyScores.reduce((sum, s) => sum + s, 0) / joyScores.length;
+  
   const freq = {};
   for (const r of results) {
     freq[r.joyLikelihood] = (freq[r.joyLikelihood] || 0) + 1;
   }
+  
   let joyMode = 'UNKNOWN';
   let maxCount = 0;
   for (const [likelihood, count] of Object.entries(freq)) {
@@ -95,7 +94,7 @@ export async function analyzeFramesNonVerbal(frameBuffers = []) {
       joyMode = likelihood;
     }
   }
-
+  
   return {
     framesAnalyzed: frameBuffers.length,
     framesWithFace,
