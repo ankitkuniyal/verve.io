@@ -32,7 +32,7 @@ import {
   Title,
   Tooltip,
   Legend,
-  Filler
+  Filler,
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 
@@ -64,7 +64,10 @@ const tips = [
 
 function getTipOfTheDay() {
   const today = new Date();
-  const dateSeed = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
+  const dateSeed =
+    today.getFullYear() * 10000 +
+    (today.getMonth() + 1) * 100 +
+    today.getDate();
   const index = dateSeed % tips.length;
   return tips[index];
 }
@@ -84,8 +87,8 @@ const FeatureCard = ({ icon, title, description, delay, onClick }) => {
       onClick={onClick}
       className={`p-6 rounded-2xl border-2 border-gray-200 bg-white transition-all duration-700 transform hover:scale-105 hover:shadow-xl cursor-pointer ${
         isVisible
-          ? "opacity-100 translate-y-0 scale-100"
-          : "opacity-0 translate-y-8 scale-95"
+          ? 'opacity-100 translate-y-0 scale-100'
+          : 'opacity-0 translate-y-8 scale-95'
       }`}
     >
       <div className="flex items-center justify-center w-16 h-16 bg-blue-100 rounded-2xl mb-4 text-blue-600">
@@ -101,7 +104,8 @@ export default function Dashboard() {
   const [user, setUser] = useState({
     name: 'Loading...',
     email: '',
-    mbaExam: 'CAT'
+    mbaExam: 'CAT',
+    photoURL: '',
   });
   const [showTitle, setShowTitle] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -113,16 +117,29 @@ export default function Dashboard() {
     weeklyTarget: 10,
     improvement: '0%',
     weakestTopic: 'Loading...',
-    strongestTopic: 'Loading...'
+    strongestTopic: 'Loading...',
   });
   const [leagueData, setLeagueData] = useState({
     league: { name: 'Bronze', icon: '🥉', color: '#cd7f32' },
     league_score: 0,
     next_league: { name: 'Silver', min_score: 60 },
-    progress: 0
+    progress: 0,
   });
   const [chartData, setChartData] = useState({
-    labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5', 'Week 6', 'Week 7', 'Week 8', 'Week 9', 'Week 10', 'Week 11', 'Week 12'],
+    labels: [
+      'Week 1',
+      'Week 2',
+      'Week 3',
+      'Week 4',
+      'Week 5',
+      'Week 6',
+      'Week 7',
+      'Week 8',
+      'Week 9',
+      'Week 10',
+      'Week 11',
+      'Week 12',
+    ],
     datasets: [
       {
         label: 'Quantitative Aptitude',
@@ -165,8 +182,8 @@ export default function Dashboard() {
         pointBorderWidth: 2,
         pointRadius: 4,
         pointHoverRadius: 6,
-      }
-    ]
+      },
+    ],
   });
 
   const tipOfTheDay = getTipOfTheDay();
@@ -174,7 +191,7 @@ export default function Dashboard() {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
-    day: 'numeric'
+    day: 'numeric',
   });
 
   const navigate = useNavigate();
@@ -183,24 +200,27 @@ export default function Dashboard() {
     {
       id: 1,
       title: 'Master Time Management',
-      description: 'You spend avg 3.2 mins per question. Aim for 2.5 mins to complete sections faster.',
+      description:
+        'You spend avg 3.2 mins per question. Aim for 2.5 mins to complete sections faster.',
       icon: <Clock size={24} />,
-      color: 'from-blue-500 to-indigo-600'
+      color: 'from-blue-500 to-indigo-600',
     },
     {
       id: 2,
       title: 'Practice Mental Math',
-      description: 'Avoid calculator dependency. Practice speed calculations for Quant section.',
+      description:
+        'Avoid calculator dependency. Practice speed calculations for Quant section.',
       icon: <Brain size={24} />,
-      color: 'from-purple-500 to-pink-600'
+      color: 'from-purple-500 to-pink-600',
     },
     {
       id: 3,
       title: 'Revision Strategy Needed',
-      description: 'Revisit incorrect answers. Your revision rate is 40% - increase to 70%.',
+      description:
+        'Revisit incorrect answers. Your revision rate is 40% - increase to 70%.',
       icon: <TrendingUp size={24} />,
-      color: 'from-emerald-500 to-teal-600'
-    }
+      color: 'from-emerald-500 to-teal-600',
+    },
   ];
 
   const chartOptions = {
@@ -213,8 +233,8 @@ export default function Dashboard() {
         labels: {
           usePointStyle: true,
           padding: 15,
-          font: { size: 12, weight: '600' }
-        }
+          font: { size: 12, weight: '600' },
+        },
       },
       tooltip: {
         backgroundColor: 'rgba(0, 0, 0, 0.8)',
@@ -224,14 +244,14 @@ export default function Dashboard() {
         borderColor: '#0ea5e9',
         borderWidth: 1,
         callbacks: {
-          label: (context) => `${context.dataset.label}: ${context.parsed.y}%`
-        }
-      }
+          label: (context) => `${context.dataset.label}: ${context.parsed.y}%`,
+        },
+      },
     },
     scales: {
       x: {
         grid: { display: false },
-        ticks: { color: '#64748b', font: { size: 11 } }
+        ticks: { color: '#64748b', font: { size: 11 } },
       },
       y: {
         beginAtZero: true,
@@ -240,10 +260,10 @@ export default function Dashboard() {
         ticks: {
           color: '#64748b',
           font: { size: 11 },
-          callback: (value) => value + '%'
-        }
-      }
-    }
+          callback: (value) => value + '%',
+        },
+      },
+    },
   };
 
   // Fetch dashboard analytics data from Firestore (with localStorage fallback)
@@ -256,9 +276,10 @@ export default function Dashboard() {
           collection(db, 'users', userId, 'essayResults')
         );
         const essaysSnapshot = await getDocs(essaysQuery);
-        storedEssays = essaysSnapshot.docs.map(doc => {
+        storedEssays = essaysSnapshot.docs.map((doc) => {
           const data = doc.data();
-          const createdAt = data.createdAt?.toDate?.()?.toISOString() ||
+          const createdAt =
+            data.createdAt?.toDate?.()?.toISOString() ||
             data.metadata?.analyzedAt?.toDate?.()?.toISOString() ||
             new Date().toISOString();
 
@@ -268,9 +289,11 @@ export default function Dashboard() {
             userId: data.userId || userId,
             metadata: {
               ...data.metadata,
-              analyzedAt: data.metadata?.analyzedAt?.toDate?.()?.toISOString() || createdAt
+              analyzedAt:
+                data.metadata?.analyzedAt?.toDate?.()?.toISOString() ||
+                createdAt,
             },
-            createdAt: createdAt
+            createdAt: createdAt,
           };
         });
 
@@ -281,38 +304,51 @@ export default function Dashboard() {
         });
 
         if (storedEssays.length > 0) {
-          const existingLocal = JSON.parse(localStorage.getItem('essayResults') || '[]');
-          const otherUsersData = existingLocal.filter(essay => essay.userId && essay.userId !== userId);
+          const existingLocal = JSON.parse(
+            localStorage.getItem('essayResults') || '[]'
+          );
+          const otherUsersData = existingLocal.filter(
+            (essay) => essay.userId && essay.userId !== userId
+          );
           const mergedData = [...otherUsersData, ...storedEssays];
           localStorage.setItem('essayResults', JSON.stringify(mergedData));
         }
       } catch (firestoreError) {
-        const localEssays = JSON.parse(localStorage.getItem('essayResults') || '[]');
-        storedEssays = localEssays.filter(essay => !essay.userId || essay.userId === userId);
+        const localEssays = JSON.parse(
+          localStorage.getItem('essayResults') || '[]'
+        );
+        storedEssays = localEssays.filter(
+          (essay) => !essay.userId || essay.userId === userId
+        );
       }
 
-      const storedQuizzes = JSON.parse(localStorage.getItem('quizResults') || '[]');
-      const storedInterviews = JSON.parse(localStorage.getItem('interviewResults') || '[]');
+      const storedQuizzes = JSON.parse(
+        localStorage.getItem('quizResults') || '[]'
+      );
+      const storedInterviews = JSON.parse(
+        localStorage.getItem('interviewResults') || '[]'
+      );
 
-      const totalTests = storedEssays.length + storedQuizzes.length + storedInterviews.length;
+      const totalTests =
+        storedEssays.length + storedQuizzes.length + storedInterviews.length;
 
       let avgScore = 0;
       let totalScore = 0;
       let scoreCount = 0;
 
-      storedEssays.forEach(essay => {
+      storedEssays.forEach((essay) => {
         if (essay.analysis?.overallAssessment?.totalScore) {
           totalScore += essay.analysis.overallAssessment.totalScore;
           scoreCount++;
         }
       });
-      storedQuizzes.forEach(quiz => {
+      storedQuizzes.forEach((quiz) => {
         if (quiz.score !== undefined) {
           totalScore += quiz.score;
           scoreCount++;
         }
       });
-      storedInterviews.forEach(interview => {
+      storedInterviews.forEach((interview) => {
         if (interview.overallScore) {
           totalScore += interview.overallScore;
           scoreCount++;
@@ -323,18 +359,32 @@ export default function Dashboard() {
 
       let improvement = '0%';
       if (storedEssays.length >= 4) {
-        const scores = storedEssays.map(e => e.analysis?.overallAssessment?.totalScore || 0);
+        const scores = storedEssays.map(
+          (e) => e.analysis?.overallAssessment?.totalScore || 0
+        );
         const midPoint = Math.floor(scores.length / 2);
         const firstHalf = scores.slice(0, midPoint);
         const secondHalf = scores.slice(midPoint);
 
-        const firstAvg = firstHalf.reduce((a, b) => a + b, 0) / firstHalf.length;
-        const secondAvg = secondHalf.reduce((a, b) => a + b, 0) / secondHalf.length;
-        const improvementValue = ((secondAvg - firstAvg) / firstAvg * 100).toFixed(0);
-        improvement = improvementValue > 0 ? `+${improvementValue}%` : `${improvementValue}%`;
+        const firstAvg =
+          firstHalf.reduce((a, b) => a + b, 0) / firstHalf.length;
+        const secondAvg =
+          secondHalf.reduce((a, b) => a + b, 0) / secondHalf.length;
+        const improvementValue = (
+          ((secondAvg - firstAvg) / firstAvg) *
+          100
+        ).toFixed(0);
+        improvement =
+          improvementValue > 0
+            ? `+${improvementValue}%`
+            : `${improvementValue}%`;
       }
 
-      const allTests = [...storedEssays, ...storedQuizzes, ...storedInterviews];
+      const allTests = [
+        ...storedEssays,
+        ...storedQuizzes,
+        ...storedInterviews,
+      ];
       const today = new Date();
       let streak = 0;
       for (let i = 0; i < 30; i++) {
@@ -342,8 +392,10 @@ export default function Dashboard() {
         date.setDate(date.getDate() - i);
         const dateStr = date.toISOString().split('T')[0];
 
-        const hasActivity = allTests.some(item => {
-          const itemDate = new Date(item.metadata?.analyzedAt || item.completedAt || item.timestamp);
+        const hasActivity = allTests.some((item) => {
+          const itemDate = new Date(
+            item.metadata?.analyzedAt || item.completedAt || item.timestamp
+          );
           return itemDate.toISOString().split('T')[0] === dateStr;
         });
 
@@ -355,7 +407,7 @@ export default function Dashboard() {
       }
 
       const topicScores = {};
-      storedEssays.forEach(essay => {
+      storedEssays.forEach((essay) => {
         const topic = essay.metadata?.topic || 'General';
         const score = essay.analysis?.overallAssessment?.totalScore || 0;
         if (!topicScores[topic]) {
@@ -369,7 +421,7 @@ export default function Dashboard() {
       let strongestTopic = 'No data yet';
       let minAvg = 100;
       let maxAvg = 0;
-      Object.keys(topicScores).forEach(topic => {
+      Object.keys(topicScores).forEach((topic) => {
         const avg = topicScores[topic].total / topicScores[topic].count;
         if (avg < minAvg) {
           minAvg = avg;
@@ -389,10 +441,14 @@ export default function Dashboard() {
         weeklyTarget: 10,
         improvement,
         weakestTopic,
-        strongestTopic
+        strongestTopic,
       });
 
-      let leagueInfo = { name: 'Bronze', icon: '🥉', color: '#cd7f32' };
+      let leagueInfo = {
+        name: 'Bronze',
+        icon: '🥉',
+        color: '#cd7f32',
+      };
       let nextLeague = { name: 'Silver', min_score: 50, min_attempts: 3 };
       let progress = 0;
       const totalAttempts = storedEssays.length;
@@ -408,14 +464,26 @@ export default function Dashboard() {
       } else if (totalAttempts >= 6 && avgScore >= 65) {
         leagueInfo = { name: 'Gold', icon: '🥇', color: '#ffd700' };
         nextLeague = { name: 'Platinum', min_score: 80, min_attempts: 10 };
-        const attemptProgress = Math.min(100, ((totalAttempts - 6) / (10 - 6)) * 100);
-        const scoreProgress = Math.min(100, ((avgScore - 65) / (80 - 65)) * 100);
+        const attemptProgress = Math.min(
+          100,
+          ((totalAttempts - 6) / (10 - 6)) * 100
+        );
+        const scoreProgress = Math.min(
+          100,
+          ((avgScore - 65) / (80 - 65)) * 100
+        );
         progress = (attemptProgress + scoreProgress) / 2;
       } else if (totalAttempts >= 3 && avgScore >= 50) {
         leagueInfo = { name: 'Silver', icon: '🥈', color: '#c0c0c0' };
         nextLeague = { name: 'Gold', min_score: 65, min_attempts: 6 };
-        const attemptProgress = Math.min(100, ((totalAttempts - 3) / (6 - 3)) * 100);
-        const scoreProgress = Math.min(100, ((avgScore - 50) / (65 - 50)) * 100);
+        const attemptProgress = Math.min(
+          100,
+          ((totalAttempts - 3) / (6 - 3)) * 100
+        );
+        const scoreProgress = Math.min(
+          100,
+          ((avgScore - 50) / (65 - 50)) * 100
+        );
         progress = (attemptProgress + scoreProgress) / 2;
       } else {
         const attemptProgress = Math.min(100, (totalAttempts / 3) * 100);
@@ -427,7 +495,7 @@ export default function Dashboard() {
         league: leagueInfo,
         league_score: avgScore,
         next_league: nextLeague,
-        progress: Math.round(progress)
+        progress: Math.round(progress),
       });
 
       const sortedEssays = [...storedEssays].sort((a, b) => {
@@ -437,57 +505,57 @@ export default function Dashboard() {
       });
 
       const labels = sortedEssays.map((essay, index) => `Attempt ${index + 1}`);
-      const contentScores = sortedEssays.map(essay =>
+      const contentScores = sortedEssays.map((essay) =>
         Math.round((essay.analysis?.sectionScores?.content || 0) * 10)
       );
-      const structureScores = sortedEssays.map(essay =>
+      const structureScores = sortedEssays.map((essay) =>
         Math.round((essay.analysis?.sectionScores?.structure || 0) * 10)
       );
-      const languageScores = sortedEssays.map(essay =>
+      const languageScores = sortedEssays.map((essay) =>
         Math.round((essay.analysis?.sectionScores?.language || 0) * 10)
       );
 
       if (sortedEssays.length === 0) {
-        setChartData(prevChartData => ({
+        setChartData((prevChartData) => ({
           labels: ['No attempts yet'],
           datasets: [
             {
               ...prevChartData.datasets[0],
               label: 'Content Quality',
-              data: [0]
+              data: [0],
             },
             {
               ...prevChartData.datasets[1],
               label: 'Structure',
-              data: [0]
+              data: [0],
             },
             {
               ...prevChartData.datasets[2],
               label: 'Language',
-              data: [0]
-            }
-          ]
+              data: [0],
+            },
+          ],
         }));
       } else {
-        setChartData(prevChartData => ({
+        setChartData((prevChartData) => ({
           labels: labels,
           datasets: [
             {
               ...prevChartData.datasets[0],
               label: 'Content Quality',
-              data: contentScores
+              data: contentScores,
             },
             {
               ...prevChartData.datasets[1],
               label: 'Structure',
-              data: structureScores
+              data: structureScores,
             },
             {
               ...prevChartData.datasets[2],
               label: 'Language',
-              data: languageScores
-            }
-          ]
+              data: languageScores,
+            },
+          ],
         }));
       }
     } catch (error) {
@@ -505,25 +573,36 @@ export default function Dashboard() {
           const profileRef = doc(db, 'users', firebaseUser.uid);
           const profileSnap = await getDoc(profileRef);
 
+          let photoURL =
+            profileSnap.exists() && profileSnap.data().photoURL
+              ? profileSnap.data().photoURL
+              : (firebaseUser.photoURL || '');
+
           if (profileSnap.exists()) {
             const profileData = profileSnap.data();
             setUser({
-              name: profileData.name || firebaseUser.displayName || 'User',
+              name:
+                profileData.name ||
+                firebaseUser.displayName ||
+                'User',
               email: profileData.email || firebaseUser.email || '',
-              mbaExam: profileData.mbaExam || 'CAT'
+              mbaExam: profileData.mbaExam || 'CAT',
+              photoURL: photoURL,
             });
           } else {
             setUser({
               name: firebaseUser.displayName || 'User',
               email: firebaseUser.email || '',
-              mbaExam: 'CAT'
+              mbaExam: 'CAT',
+              photoURL: firebaseUser.photoURL || '',
             });
           }
         } catch (error) {
           setUser({
             name: firebaseUser.displayName || 'User',
             email: firebaseUser.email || '',
-            mbaExam: 'CAT'
+            mbaExam: 'CAT',
+            photoURL: firebaseUser.photoURL || '',
           });
         }
         fetchDashboardData(firebaseUser.uid);
@@ -545,12 +624,21 @@ export default function Dashboard() {
           const profileRef = doc(db, 'users', currentUser.uid);
           const profileSnap = await getDoc(profileRef);
 
+          let photoURL =
+            profileSnap.exists() && profileSnap.data().photoURL
+              ? profileSnap.data().photoURL
+              : (currentUser.photoURL || '');
+
           if (profileSnap.exists()) {
             const profileData = profileSnap.data();
             setUser({
-              name: profileData.name || currentUser.displayName || 'User',
+              name:
+                profileData.name ||
+                currentUser.displayName ||
+                'User',
               email: profileData.email || currentUser.email || '',
-              mbaExam: profileData.mbaExam || 'CAT'
+              mbaExam: profileData.mbaExam || 'CAT',
+              photoURL: photoURL,
             });
           }
         } catch (error) {
@@ -611,12 +699,12 @@ export default function Dashboard() {
   };
 
   const downloadReport = async () => {
-    const doc = new jsPDF("p", "pt", "a4");
+    const doc = new jsPDF('p', 'pt', 'a4');
     const marginLeft = 40;
     let y = 40;
 
     doc.setFontSize(20);
-    doc.text("MBA Progress Report", marginLeft, y);
+    doc.text('MBA Progress Report', marginLeft, y);
     doc.setFontSize(11);
     y += 24;
     doc.text(`Date: ${new Date().toLocaleString()}`, marginLeft, y);
@@ -629,30 +717,43 @@ export default function Dashboard() {
 
     y += 28;
     doc.setFontSize(13);
-    doc.text("Summary Stats", marginLeft, y);
+    doc.text('Summary Stats', marginLeft, y);
     y += 8;
     doc.autoTable({
       startY: y + 8,
       margin: { left: marginLeft },
-      head: [['Total Quizzes', 'Avg Score', 'Chapters Attempted', 'Streak', 'Weekly Target', 'Improvement', 'Weakest Topic', 'Strongest Topic']],
-      body: [[
-        stats.totalQuizzes,
-        stats.avgScore + '%',
-        stats.chaptersAttempted,
-        stats.streak,
-        stats.weeklyTarget,
-        stats.improvement,
-        stats.weakestTopic,
-        stats.strongestTopic
-      ]],
+      head: [
+        [
+          'Total Quizzes',
+          'Avg Score',
+          'Chapters Attempted',
+          'Streak',
+          'Weekly Target',
+          'Improvement',
+          'Weakest Topic',
+          'Strongest Topic',
+        ],
+      ],
+      body: [
+        [
+          stats.totalQuizzes,
+          stats.avgScore + '%',
+          stats.chaptersAttempted,
+          stats.streak,
+          stats.weeklyTarget,
+          stats.improvement,
+          stats.weakestTopic,
+          stats.strongestTopic,
+        ],
+      ],
       theme: 'grid',
       styles: { fontSize: 10 },
-      headStyles: { fillColor: [50, 90, 155] }
+      headStyles: { fillColor: [50, 90, 155] },
     });
 
     const leagueStartY = doc.autoTable.previous.finalY + 24;
     doc.setFontSize(13);
-    doc.text("League Info", marginLeft, leagueStartY);
+    doc.text('League Info', marginLeft, leagueStartY);
     doc.setFontSize(11);
     let nextLeagueText = `${leagueData.league.name} (${leagueData.league.icon}), Score: ${leagueData.league_score}`;
     if (leagueData.next_league) {
@@ -663,26 +764,26 @@ export default function Dashboard() {
 
     const recStartY = leagueStartY + 44;
     doc.setFontSize(13);
-    doc.text("Recommendations", marginLeft, recStartY);
+    doc.text('Recommendations', marginLeft, recStartY);
     doc.autoTable({
       startY: recStartY + 8,
       margin: { left: marginLeft },
       head: [['Title', 'Description']],
-      body: recommendations.map(r => [r.title, r.description]),
+      body: recommendations.map((r) => [r.title, r.description]),
       theme: 'grid',
       styles: { fontSize: 10 },
-      headStyles: { fillColor: [66, 153, 225] }
+      headStyles: { fillColor: [66, 153, 225] },
     });
 
     const chartY = doc.autoTable.previous.finalY + 24;
     doc.setFontSize(13);
-    doc.text("Progress Chart Data", marginLeft, chartY);
-    const tableHead = ['Week', ...chartData.datasets.map(ds => ds.label)];
+    doc.text('Progress Chart Data', marginLeft, chartY);
+    const tableHead = ['Week', ...chartData.datasets.map((ds) => ds.label)];
     const tableBody = [];
     for (let i = 0; i < chartData.labels.length; i++) {
       const row = [
         chartData.labels[i],
-        ...chartData.datasets.map(ds => ds.data[i] + '%')
+        ...chartData.datasets.map((ds) => ds.data[i] + '%'),
       ];
       tableBody.push(row);
     }
@@ -693,14 +794,20 @@ export default function Dashboard() {
       body: tableBody,
       theme: 'grid',
       styles: { fontSize: 9 },
-      headStyles: { fillColor: [100, 116, 139] }
+      headStyles: { fillColor: [100, 116, 139] },
     });
 
     const noteY = doc.autoTable.previous.finalY + 32;
     doc.setFontSize(10);
-    doc.text("Generated by Verve MBA Dashboard.", marginLeft, noteY);
+    doc.text('Generated by Verve MBA Dashboard.', marginLeft, noteY);
 
-    doc.save(`mba-progress-report-${user.name.toLowerCase().replace(/\s/g, "_")}-${new Date().toISOString().slice(0, 10)}.pdf`);
+    doc.save(
+      `mba-progress-report-${user.name
+        .toLowerCase()
+        .replace(/\s/g, '_')}-${new Date()
+        .toISOString()
+        .slice(0, 10)}.pdf`
+    );
   };
 
   const progressPercent = (stats.streak / stats.weeklyTarget) * 100;
@@ -724,7 +831,7 @@ export default function Dashboard() {
         // TODO: Replace 100 with total results count for production, or implement correct API pagination.
         const url = `https://verve-io.onrender.com/api/services/news?language=en&page=1&pageSize=100`;
         const res = await fetch(url);
-        if (!res.ok) throw new Error("Failed to load MBA news");
+        if (!res.ok) throw new Error('Failed to load MBA news');
         const data = await res.json();
         let allArticles = data.articles || [];
         // Sort in descending order by publishedAt (latest first)
@@ -741,16 +848,20 @@ export default function Dashboard() {
         const pageArticles = allArticles.slice(startIdx, endIdx);
         if (!ignore) {
           setMbaNews(pageArticles);
-          setNewsTotalResults(Number(data.totalResults) || allArticles.length || 0);
+          setNewsTotalResults(
+            Number(data.totalResults) || allArticles.length || 0
+          );
         }
       } catch (err) {
-        if (!ignore) setNewsError(err.message || "Error loading news");
+        if (!ignore) setNewsError(err.message || 'Error loading news');
       } finally {
         if (!ignore) setNewsLoading(false);
       }
     }
     fetchMbaNews();
-    return () => { ignore = true };
+    return () => {
+      ignore = true;
+    };
   }, [newsPage, newsPageSize]);
 
   if (isLoading) {
@@ -772,37 +883,43 @@ export default function Dashboard() {
           <div className="flex flex-col lg:flex-row gap-6 items-start">
             <div className="flex-1">
               <h1 className="text-5xl font-black text-gray-900 tracking-tight mb-4">
-                {`Welcome back, ${user.name.split(' ')[0]}!`.split(/( )/).map((part, index) =>
-                  part === " " ? (
-                    <span key={index}>&nbsp;</span>
-                  ) : (
-                    part.split("").map((letter, i) => (
-                      <span
-                        key={`${index}-${i}`}
-                        className={`inline-block transition-all duration-700 ease-out ${
-                          showTitle
-                            ? "opacity-100 transform translate-y-0 scale-100"
-                            : "opacity-0 transform translate-y-12 scale-95"
-                        }`}
-                        style={{
-                          transitionDelay: showTitle
-                            ? `${(index * 7 + i) * 0.05}s`
-                            : "0s",
-                        }}
-                      >
-                        {letter}
-                      </span>
-                    ))
-                  )
-                )}
+                {`Welcome back, ${user.name.split(' ')[0]}!`
+                  .split(/( )/)
+                  .map((part, index) =>
+                    part === ' ' ? (
+                      <span key={index}>&nbsp;</span>
+                    ) : (
+                      part.split('').map((letter, i) => (
+                        <span
+                          key={`${index}-${i}`}
+                          className={`inline-block transition-all duration-700 ease-out ${
+                            showTitle
+                              ? 'opacity-100 transform translate-y-0 scale-100'
+                              : 'opacity-0 transform translate-y-12 scale-95'
+                          }`}
+                          style={{
+                            transitionDelay: showTitle
+                              ? `${(index * 7 + i) * 0.05}s`
+                              : '0s',
+                          }}
+                        >
+                          {letter}
+                        </span>
+                      ))
+                    )
+                  )}
               </h1>
-              <p className="text-xl text-gray-600 mb-6">Ready to continue your MBA preparation journey?</p>
+              <p className="text-xl text-gray-600 mb-6">
+                Ready to continue your MBA preparation journey?
+              </p>
               <div className="bg-gradient-to-r from-yellow-50 to-amber-50 border-l-4 border-yellow-400 rounded-2xl p-6 flex items-center gap-4 shadow-sm mb-4">
                 <div className="w-12 h-12 rounded-full bg-gradient-to-br from-yellow-400 to-amber-500 text-white flex items-center justify-center">
                   <Lightbulb size={24} />
                 </div>
                 <div>
-                  <div className="text-sm font-semibold text-yellow-800">Tip of the Day:</div>
+                  <div className="text-sm font-semibold text-yellow-800">
+                    Tip of the Day:
+                  </div>
                   <div className="text-sm text-yellow-700">{tipOfTheDay}</div>
                 </div>
               </div>
@@ -814,11 +931,22 @@ export default function Dashboard() {
             <div className="w-full lg:w-80">
               <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
                 <div className="flex items-center gap-4 mb-4">
-                  <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center text-white text-2xl">
-                    <UserCheck size={32} />
-                  </div>
+                  {user.photoURL ? (
+                    <img
+                      src={user.photoURL}
+                      alt="Profile"
+                      className="w-16 h-16 rounded-2xl object-cover border-2 border-blue-200 bg-gradient-to-br from-blue-500 to-purple-600 flex-shrink-0"
+                      style={{ background: 'transparent' }}
+                    />
+                  ) : (
+                    <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center text-white text-2xl">
+                      <UserCheck size={32} />
+                    </div>
+                  )}
                   <div className="flex-1">
-                    <div className="font-bold text-gray-800 text-xl">{user.name}</div>
+                    <div className="font-bold text-gray-800 text-xl">
+                      {user.name}
+                    </div>
                     <div className="text-base text-gray-500">{user.email}</div>
                     <div className="inline-block mt-2 bg-blue-600 text-white px-4 py-2 rounded-full text-sm font-medium">
                       {user.mbaExam} Aspirant
@@ -854,10 +982,18 @@ export default function Dashboard() {
                 <FileUp size={34} className="text-white" />
               </div>
             }
-            title={<span className="font-bold text-blue-700 text-lg">Resume Parser</span>}
+            title={
+              <span className="font-bold text-blue-700 text-lg">
+                Resume Analyzer
+              </span>
+            }
             description={
               <span className="text-blue-500 font-medium">
-                AI-Powered Analysis of your <span className="font-semibold underline decoration-blue-300/60">resume</span> and background
+                AI-Powered Analysis of your{' '}
+                <span className="font-semibold underline decoration-blue-300/60">
+                  resume
+                </span>{' '}
+                and background
               </span>
             }
             delay={200}
@@ -869,10 +1005,16 @@ export default function Dashboard() {
                 <Brain size={34} className="text-white" />
               </div>
             }
-            title={<span className="font-bold text-purple-700 text-lg">AI Quiz</span>}
+            title={
+              <span className="font-bold text-purple-700 text-lg">AI Quiz</span>
+            }
             description={
               <span className="text-purple-500 font-medium">
-                Interactive <span className="font-semibold underline decoration-pink-300/60">Learning</span> with personalized questions
+                Interactive{' '}
+                <span className="font-semibold underline decoration-pink-300/60">
+                  Learning
+                </span>{' '}
+                with personalized questions
               </span>
             }
             delay={300}
@@ -884,10 +1026,18 @@ export default function Dashboard() {
                 <PenTool size={34} className="text-white" />
               </div>
             }
-            title={<span className="font-bold text-yellow-700 text-lg">Written Test</span>}
+            title={
+              <span className="font-bold text-yellow-700 text-lg">
+                Written Test
+              </span>
+            }
             description={
               <span className="text-yellow-500 font-medium">
-                Essay <span className="font-semibold underline decoration-yellow-300/60">Practice</span> and analysis
+                Essay{' '}
+                <span className="font-semibold underline decoration-yellow-300/60">
+                  Practice
+                </span>{' '}
+                and analysis
               </span>
             }
             delay={400}
@@ -899,10 +1049,18 @@ export default function Dashboard() {
                 <Video size={34} className="text-white" />
               </div>
             }
-            title={<span className="font-bold text-teal-700 text-lg">Video Interview</span>}
+            title={
+              <span className="font-bold text-teal-700 text-lg">
+                Video Interview
+              </span>
+            }
             description={
               <span className="text-teal-500 font-medium">
-                Practice <span className="font-semibold underline decoration-teal-300/60">Interviews</span> with AI feedback
+                Practice{' '}
+                <span className="font-semibold underline decoration-teal-300/60">
+                  Interviews
+                </span>{' '}
+                with AI feedback
               </span>
             }
             delay={500}
@@ -919,7 +1077,10 @@ export default function Dashboard() {
                   <ChartLine className="text-blue-600" size={24} />
                   Essay Performance Over Time
                 </h5>
-                <p className="text-gray-600">Your scores across Content Quality, Structure, and Language for each attempt</p>
+                <p className="text-gray-600">
+                  Your scores across Content Quality, Structure, and Language for
+                  each attempt
+                </p>
               </div>
               <button
                 onClick={downloadReport}
@@ -939,7 +1100,12 @@ export default function Dashboard() {
                 <Trophy className="text-amber-500" size={24} />
                 Your League
               </h5>
-              <div className="p-5 rounded-xl bg-gradient-to-br from-gray-500 via-gray-600 to-gray-700 text-white shadow-lg relative overflow-hidden" style={{ background: `linear-gradient(135deg, ${leagueData.league.color} 0%, ${leagueData.league.color}dd 100%)` }}>
+              <div
+                className="p-5 rounded-xl bg-gradient-to-br from-gray-500 via-gray-600 to-gray-700 text-white shadow-lg relative overflow-hidden"
+                style={{
+                  background: `linear-gradient(135deg, ${leagueData.league.color} 0%, ${leagueData.league.color}dd 100%)`,
+                }}
+              >
                 <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-5 rounded-full -mr-16 -mt-16"></div>
                 <div className="absolute bottom-0 left-0 w-24 h-24 bg-white opacity-5 rounded-full -ml-12 -mb-12"></div>
                 <div className="relative flex items-center gap-3 mb-4">
@@ -947,7 +1113,9 @@ export default function Dashboard() {
                     {leagueData.league.icon}
                   </div>
                   <div>
-                    <div className="font-bold text-2xl">{leagueData.league.name} League</div>
+                    <div className="font-bold text-2xl">
+                      {leagueData.league.name} League
+                    </div>
                     <div className="text-sm opacity-90 flex items-center gap-1">
                       <Star size={16} />
                       {Math.floor(leagueData.league_score)}% League Score
@@ -958,7 +1126,17 @@ export default function Dashboard() {
                   <div className="flex justify-between text-sm mb-2 font-medium">
                     <span>Next: {leagueData.next_league.name} League</span>
                     <span className="text-right text-xs">
-                      {leagueData.next_league.min_score}%{leagueData.next_league.min_attempts ? <><br /><span className="opacity-75">({leagueData.next_league.min_attempts} attempts)</span></> : ''}
+                      {leagueData.next_league.min_score}%
+                      {leagueData.next_league.min_attempts ? (
+                        <>
+                          <br />
+                          <span className="opacity-75">
+                            ({leagueData.next_league.min_attempts} attempts)
+                          </span>
+                        </>
+                      ) : (
+                        ''
+                      )}
                     </span>
                   </div>
                   <div className="w-full h-3 bg-gray-800/40 rounded-full overflow-hidden">
@@ -968,9 +1146,16 @@ export default function Dashboard() {
                     />
                   </div>
                   <div className="flex justify-between items-center mt-2">
-                    <div className="text-xs opacity-90">{leagueData.progress}% Complete</div>
+                    <div className="text-xs opacity-90">
+                      {leagueData.progress}% Complete
+                    </div>
                     <div className="text-xs bg-white/20 px-2 py-1 rounded-full">
-                      {Math.max(0, leagueData.next_league.min_score - leagueData.league_score)}% to go
+                      {Math.max(
+                        0,
+                        leagueData.next_league.min_score -
+                          leagueData.league_score
+                      )}
+                      % to go
                     </div>
                   </div>
                 </div>
@@ -983,16 +1168,28 @@ export default function Dashboard() {
               </h5>
               <div className="space-y-3">
                 <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
-                  <span className="text-sm font-medium text-gray-700">Improvement</span>
-                  <span className="text-lg font-bold text-green-600">{stats.improvement}</span>
+                  <span className="text-sm font-medium text-gray-700">
+                    Improvement
+                  </span>
+                  <span className="text-lg font-bold text-green-600">
+                    {stats.improvement}
+                  </span>
                 </div>
                 <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
-                  <span className="text-sm font-medium text-gray-700">Current Streak</span>
-                  <span className="text-lg font-bold text-green-600">{stats.streak} days</span>
+                  <span className="text-sm font-medium text-gray-700">
+                    Current Streak
+                  </span>
+                  <span className="text-lg font-bold text-green-600">
+                    {stats.streak} days
+                  </span>
                 </div>
                 <div className="flex justify-between items-center p-3 bg-amber-50 rounded-lg">
-                  <span className="text-sm font-medium text-gray-700">Total Quizzes</span>
-                  <span className="text-lg font-bold text-amber-600">{stats.totalQuizzes}</span>
+                  <span className="text-sm font-medium text-gray-700">
+                    Total Quizzes
+                  </span>
+                  <span className="text-lg font-bold text-amber-600">
+                    {stats.totalQuizzes}
+                  </span>
                 </div>
               </div>
             </div>
@@ -1010,23 +1207,38 @@ export default function Dashboard() {
               aria-label="Go to Learning Hub"
             >
               <span className="flex items-center gap-3 mb-5">
-                <ArrowRight size={48} className="text-white drop-shadow-lg group-hover:translate-x-2 transition-all duration-300" />
+                <ArrowRight
+                  size={48}
+                  className="text-white drop-shadow-lg group-hover:translate-x-2 transition-all duration-300"
+                />
                 <span className="text-3xl font-extrabold text-white drop-shadow-lg tracking-wide">
                   Go to Learning Hub
                 </span>
               </span>
-              <span className="text-lg text-white/90 font-semibold">Jump into learning. Your personalized resource hub.</span>
+              <span className="text-lg text-white/90 font-semibold">
+                Jump into learning. Your personalized resource hub.
+              </span>
               <span className="mt-6 flex flex-col items-center w-full gap-2">
                 <span className="text-white/70 text-base flex items-center gap-2">
                   <TargetIcon className="text-red-300" size={18} />
-                  Improve your <span className="font-bold ml-1">{stats.weakestTopic}</span>
+                  Improve your{' '}
+                  <span className="font-bold ml-1">
+                    {stats.weakestTopic}
+                  </span>
                 </span>
-                <span className="text-xs text-white/60 mt-1">Focus on this area for better results</span>
+                <span className="text-xs text-white/60 mt-1">
+                  Focus on this area for better results
+                </span>
                 <span className="text-white/70 text-base flex items-center gap-2 mt-3">
                   <Star className="text-green-300" size={18} />
-                  Keep up your strength in <span className="font-bold ml-1">{stats.strongestTopic}</span>
+                  Keep up your strength in{' '}
+                  <span className="font-bold ml-1">
+                    {stats.strongestTopic}
+                  </span>
                 </span>
-                <span className="text-xs text-white/60 mt-1">Keep up the excellent work!</span>
+                <span className="text-xs text-white/60 mt-1">
+                  Keep up the excellent work!
+                </span>
               </span>
             </button>
           </div>
@@ -1039,7 +1251,9 @@ export default function Dashboard() {
               <div>
                 <div className="flex justify-between text-sm mb-2">
                   <span className="text-gray-600">Quizzes This Week</span>
-                  <span className="font-bold text-gray-800">{stats.streak}/{stats.weeklyTarget}</span>
+                  <span className="font-bold text-gray-800">
+                    {stats.streak}/{stats.weeklyTarget}
+                  </span>
                 </div>
                 <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
                   <div
@@ -1049,17 +1263,27 @@ export default function Dashboard() {
                 </div>
               </div>
               <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border border-blue-100">
-                <div className="text-xs font-semibold text-blue-700 mb-2">STUDY TIME THIS WEEK</div>
-                <div className="text-2xl font-bold text-blue-900">12.5 hrs</div>
-                <div className="text-xs text-blue-600 mt-1">+2.5 hrs from last week</div>
+                <div className="text-xs font-semibold text-blue-700 mb-2">
+                  STUDY TIME THIS WEEK
+                </div>
+                <div className="text-2xl font-bold text-blue-900">
+                  12.5 hrs
+                </div>
+                <div className="text-xs text-blue-600 mt-1">
+                  +2.5 hrs from last week
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="p-3 bg-purple-50 rounded-lg text-center border border-purple-100">
-                  <div className="text-2xl font-bold text-purple-600">{stats.avgScore}%</div>
+                  <div className="text-2xl font-bold text-purple-600">
+                    {stats.avgScore}%
+                  </div>
                   <div className="text-xs text-gray-600 mt-1">Avg Score</div>
                 </div>
                 <div className="p-3 bg-blue-50 rounded-lg text-center border border-blue-100">
-                  <div className="text-2xl font-bold text-blue-600">{stats.chaptersAttempted}</div>
+                  <div className="text-2xl font-bold text-blue-600">
+                    {stats.chaptersAttempted}
+                  </div>
                   <div className="text-xs text-gray-600 mt-1">Chapters</div>
                 </div>
               </div>
@@ -1075,13 +1299,20 @@ export default function Dashboard() {
                 <Lightbulb className="text-yellow-500" size={24} />
                 Personalized Recommendations
               </h5>
-              <p className="text-gray-600 mt-1">Based on your recent performance</p>
+              <p className="text-gray-600 mt-1">
+                Based on your recent performance
+              </p>
             </div>
           </div>
           <div className="grid md:grid-cols-3 gap-6">
-            {recommendations.map(rec => (
-              <div key={rec.id} className="group p-6 rounded-xl bg-gradient-to-br hover:shadow-lg transition-all border border-gray-200 hover:scale-105 duration-300 cursor-pointer">
-                <div className={`w-12 h-12 bg-gradient-to-br ${rec.color} rounded-xl flex items-center justify-center text-white mb-4 group-hover:scale-110 transition-transform`}>
+            {recommendations.map((rec) => (
+              <div
+                key={rec.id}
+                className="group p-6 rounded-xl bg-gradient-to-br hover:shadow-lg transition-all border border-gray-200 hover:scale-105 duration-300 cursor-pointer"
+              >
+                <div
+                  className={`w-12 h-12 bg-gradient-to-br ${rec.color} rounded-xl flex items-center justify-center text-white mb-4 group-hover:scale-110 transition-transform`}
+                >
                   {rec.icon}
                 </div>
                 <div className="font-bold text-gray-800 mb-2">{rec.title}</div>
@@ -1098,7 +1329,9 @@ export default function Dashboard() {
               <Newspaper className="text-blue-600" size={24} />
               MBA News & Updates
             </h5>
-            <span className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full">Latest</span>
+            <span className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+              Latest
+            </span>
           </div>
           <div className="space-y-4 min-h-[120px]">
             {newsLoading ? (
@@ -1110,7 +1343,9 @@ export default function Dashboard() {
                 {newsError}
               </div>
             ) : mbaNews.length === 0 ? (
-              <div className="text-gray-500 text-center py-6">No news found.</div>
+              <div className="text-gray-500 text-center py-6">
+                No news found.
+              </div>
             ) : (
               mbaNews.map((news, idx) => (
                 <div
@@ -1129,22 +1364,40 @@ export default function Dashboard() {
                         rel="noopener noreferrer"
                         title={news.title}
                       >
-                        {news.title?.length > 78 ? news.title.slice(0, 75) + "..." : news.title}
+                        {news.title?.length > 78
+                          ? news.title.slice(0, 75) + '...'
+                          : news.title}
                       </a>
-                      <span className={`text-xs px-2 py-1 rounded-full flex-shrink-0 ${
-                        (news.source && news.source.name && /MBA|Business|School|Management/i.test(news.source.name)) ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"
-                      }`}>
-                        {news.source?.name || "News"}
+                      <span
+                        className={`text-xs px-2 py-1 rounded-full flex-shrink-0 ${
+                          news.source &&
+                          news.source.name &&
+                          /MBA|Business|School|Management/i.test(
+                            news.source.name
+                          )
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-blue-100 text-blue-700'
+                        }`}
+                      >
+                        {news.source?.name || 'News'}
                       </span>
                     </div>
                     <div className="text-sm text-gray-600 mb-2">
-                      {news.description?.length > 130 ? news.description.slice(0, 127) + "..." : news.description}
+                      {news.description?.length > 130
+                        ? news.description.slice(0, 127) + '...'
+                        : news.description}
                     </div>
                     <div className="text-xs text-gray-500 flex items-center gap-2 flex-wrap">
                       <Clock size={12} />
-                      {news.publishedAt ? new Date(news.publishedAt).toLocaleString(undefined, {
-                        month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit"
-                      }) : "--"}
+                      {news.publishedAt
+                        ? new Date(news.publishedAt).toLocaleString(undefined, {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })
+                        : '--'}
                     </div>
                   </div>
                 </div>
@@ -1155,20 +1408,28 @@ export default function Dashboard() {
             <div className="flex gap-2 items-center">
               <button
                 className="px-2 py-1 border rounded text-gray-600 hover:bg-blue-50 disabled:text-gray-300 disabled:cursor-not-allowed"
-                onClick={() => setNewsPage(prev => Math.max(prev - 1, 1))}
+                onClick={() => setNewsPage((prev) => Math.max(prev - 1, 1))}
                 disabled={newsPage <= 1 || newsLoading}
               >
                 Prev
               </button>
               <span className="text-xs px-2 text-gray-500">
-                Page {newsPage} of {Math.ceil(newsTotalResults / newsPageSize) || 1}
+                Page {newsPage} of{' '}
+                {Math.ceil(newsTotalResults / newsPageSize) || 1}
               </span>
               <button
                 className="px-2 py-1 border rounded text-gray-600 hover:bg-blue-50 disabled:text-gray-300 disabled:cursor-not-allowed"
                 onClick={() =>
-                  setNewsPage(prev => prev < Math.ceil(newsTotalResults / newsPageSize) ? prev + 1 : prev)
+                  setNewsPage((prev) =>
+                    prev < Math.ceil(newsTotalResults / newsPageSize)
+                      ? prev + 1
+                      : prev
+                  )
                 }
-                disabled={newsPage >= Math.ceil(newsTotalResults / newsPageSize) || newsLoading}
+                disabled={
+                  newsPage >= Math.ceil(newsTotalResults / newsPageSize) ||
+                  newsLoading
+                }
               >
                 Next
               </button>
@@ -1177,12 +1438,17 @@ export default function Dashboard() {
               <span className="text-xs text-gray-500">Per page:</span>
               <select
                 value={newsPageSize}
-                onChange={e => { setNewsPageSize(Number(e.target.value)); setNewsPage(1); }}
+                onChange={(e) => {
+                  setNewsPageSize(Number(e.target.value));
+                  setNewsPage(1);
+                }}
                 className="text-xs border border-gray-200 rounded px-2 py-1 focus:ring-blue-300"
                 disabled={newsLoading}
               >
-                {[3, 6, 10, 20].map(size => (
-                  <option key={size} value={size}>{size}</option>
+                {[3, 6, 10, 20].map((size) => (
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
                 ))}
               </select>
             </div>
