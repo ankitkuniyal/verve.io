@@ -1,10 +1,10 @@
-// routes/interviewRoutes.js
 import express from 'express';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { analyzeInterview } from '../controllers/interviewController.js';
+import { authenticateToken } from '../middlewares/authMiddleware.js';
 
 const router = express.Router();
 
@@ -40,8 +40,8 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-// Main POST route
-router.post('/', upload.any(), (req, res, next) => {
+// Main POST route - make protected with authenticateToken
+router.post('/', authenticateToken, upload.any(), (req, res, next) => {
   console.debug(`[interviewRoutes] Incoming POST /api/services/interview - files received: ${req.files ? req.files.length : 0}`);
   if (!req.files || req.files.length === 0) {
     console.warn(`[interviewRoutes] No video files received in request`);

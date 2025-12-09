@@ -23,6 +23,29 @@ import {
   TrendingUp
 } from "lucide-react";
 
+// Backend URL from env or fallback
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
+
+// Utility: get authentication headers
+const getAuthHeaders = () => {
+  // Example: If using JWT stored in localStorage
+  const token = localStorage.getItem("authToken");
+  return {
+    "Content-Type": "application/json",
+    ...(token && { Authorization: `Bearer ${token}` })
+  };
+};
+
+// Example API call wrapper
+const fetchWithAuth = async (url, options = {}) => {
+  const headers = {
+    ...getAuthHeaders(),
+    ...(options.headers || {})
+  };
+  return fetch(url, { ...options, headers });
+};
+
+
 // Mock data for charts and statistics
 const performanceData = {
   labels: ["Communication", "Confidence", "Content", "Body Language", "Overall"],
@@ -219,6 +242,27 @@ const VideoInterviewSimulator = () => {
     return () => clearInterval(timer);
   }, [currentStep, prepTime, answerTime]);
 
+  // Example: Simulate an API call with auth headers on completion
+  const uploadInterviewResponse = async () => {
+    try {
+      const response = await fetchWithAuth(
+        `${BACKEND_URL}/api/interview/recording`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            // Add proper payload fields
+            answer: "mocked audio/video data here",
+          })
+        }
+      );
+      // You may want to handle .json() or errors here
+      return response.ok;
+    } catch (e) {
+      // Optionally handle error
+      return false;
+    }
+  };
+
   const startInterview = () => {
     setCurrentStep("preparing");
     setPrepTime(30);
@@ -229,6 +273,12 @@ const VideoInterviewSimulator = () => {
     setCurrentStep("ready");
     setPrepTime(30);
     setAnswerTime(60);
+  };
+
+  const stopRecording = async () => {
+    setCurrentStep("completed");
+    // You could await uploadInterviewResponse() here if needed
+    await uploadInterviewResponse();
   };
 
   return (
@@ -297,7 +347,7 @@ const VideoInterviewSimulator = () => {
               <p className="text-sm mt-2">Speak clearly and confidently</p>
             </div>
             <button
-              onClick={() => setCurrentStep("completed")}
+              onClick={stopRecording}
               className="w-full bg-red-600 text-white py-4 rounded-xl font-bold text-lg transition-all duration-300 hover:bg-red-700 hover:scale-105"
             >
               Stop Recording
@@ -360,12 +410,16 @@ const LandingPage = () => {
   }, []);
 
   const handleGetStarted = () => {
+    // Example: You might want to log this action with an API call with auth
+    // fetchWithAuth(`${BACKEND_URL}/api/track/get-started`, { method: "POST" });
     navigate("/login");
   };
 
   const handleTryDemo = () => {
     // Scroll to demo section
     document.getElementById("demo-section").scrollIntoView({ behavior: "smooth" });
+    // Example: Log demo action if needed, using auth headers
+    // fetchWithAuth(`${BACKEND_URL}/api/track/try-demo`, { method: "POST" });
   };
 
   return (

@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
-import { db } from '../firebase/config';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { 
   ArrowLeft, 
   User, 
@@ -17,6 +15,8 @@ import {
   Award
 } from 'lucide-react';
 
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
+
 const Profile = () => {
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
@@ -25,7 +25,7 @@ const Profile = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [user, setUser] = useState(null);
-  
+
   const [profileData, setProfileData] = useState({
     name: '',
     email: '',
@@ -39,12 +39,21 @@ const Profile = () => {
     bio: ''
   });
 
+  // Helper to get auth headers (for Firebase user)
+  const getAuthHeaders = async (currentUser) => {
+    const token = await currentUser.getIdToken();
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    };
+  };
+
   useEffect(() => {
     const auth = getAuth();
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         setUser(firebaseUser);
-        await loadProfile(firebaseUser.uid);
+        await loadProfile(firebaseUser);
       } else {
         navigate('/login');
       }
@@ -53,32 +62,42 @@ const Profile = () => {
     return () => unsubscribe();
   }, [navigate]);
 
-  const loadProfile = async (userId) => {
+  const loadProfile = async (firebaseUser) => {
     setIsLoading(true);
     try {
-      // Load from Firestore: users/{userId}
-      const profileRef = doc(db, 'users', userId);
-      const profileSnap = await getDoc(profileRef);
+      const headers = await getAuthHeaders(firebaseUser);
+      const response = await fetch(`${BACKEND_URL}/api/auth/profile`, {
+        method: 'GET',
+        headers,
+      });
 
-      if (profileSnap.exists()) {
-        const data = profileSnap.data();
+      if (!response.ok) {
+        throw new Error('Failed to load profile');
+      }
+
+      const data = await response.json();
+     
+      setProfileData({
+        name: data.user.name || firebaseUser?.displayName || '',
+        email: data.user.email || firebaseUser?.email || '',
+        mbaExam: data.user.mbaExam || 'CAT',
+        phone: data.user.phone || '',
+        location: data.user.location || '',
+        workExperience: data.user.workExperience || '',
+        education: data.user.education || '',
+        achievements: data.user.achievements || '',
+        targetYear: data.user.targetYear || new Date().getFullYear() + 1,
+        bio: data.user.bio || ''
+      });
+    } catch (error) {
+      console.error('Error loading profile:', error);
+      setError('Failed to load profile. Please try again.');
+      // If error (like no profile), initialize with Firebase auth data
+     
+      if (firebaseUser) {
         setProfileData({
-          name: data.name || user?.displayName || '',
-          email: data.email || user?.email || '',
-          mbaExam: data.mbaExam || 'CAT',
-          phone: data.phone || '',
-          location: data.location || '',
-          workExperience: data.workExperience || '',
-          education: data.education || '',
-          achievements: data.achievements || '',
-          targetYear: data.targetYear || new Date().getFullYear() + 1,
-          bio: data.bio || ''
-        });
-      } else {
-        // Initialize with Firebase auth data
-        setProfileData({
-          name: user?.displayName || '',
-          email: user?.email || '',
+          name: firebaseUser?.displayName || '',
+          email: firebaseUser?.email || '',
           mbaExam: 'CAT',
           phone: '',
           location: '',
@@ -89,9 +108,6 @@ const Profile = () => {
           bio: ''
         });
       }
-    } catch (error) {
-      console.error('Error loading profile:', error);
-      setError('Failed to load profile. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -105,14 +121,19 @@ const Profile = () => {
     setSuccess('');
 
     try {
-      // Save to Firestore: users/{userId}
-      const profileRef = doc(db, 'users', user.uid);
-      await setDoc(profileRef, {
-        ...profileData,
-        updatedAt: serverTimestamp(),
-        userId: user.uid,
-        email: user.email // Ensure email is always synced
-      }, { merge: true });
+      const headers = await getAuthHeaders(user);
+      const response = await fetch(`${BACKEND_URL}/api/auth/profile`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({
+          ...profileData,
+          email: user.email // Making sure email is always synced
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save profile');
+      }
 
       setSuccess('Profile saved successfully!');
       setIsEditing(false);
@@ -179,7 +200,7 @@ const Profile = () => {
                 <button
                   onClick={() => {
                     setIsEditing(false);
-                    loadProfile(user.uid);
+                    loadProfile(user);
                     setError('');
                     setSuccess('');
                   }}

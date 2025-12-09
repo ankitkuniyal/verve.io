@@ -21,5 +21,6 @@ try {
 }
 
 const db = app ? admin.firestore() : null;
+const doc = db ? db.doc.bind(db) : null;
 
-export { admin, db };
+export { admin, db, doc };

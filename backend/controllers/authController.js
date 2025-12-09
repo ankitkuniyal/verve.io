@@ -1,5 +1,6 @@
 // controllers/authController.js
-import {admin} from '../config/firebase.js';
+import { admin, db, doc } from '../config/firebase.js';
+// Do NOT import Firestore from 'firebase-admin/firestore'; use our firebase.js wrapper instead
 
 class AuthController {
   // Register new user
@@ -19,6 +20,21 @@ class AuthController {
       await admin.auth().setCustomUserClaims(userRecord.uid, {
         roles: ['candidate']
       });
+
+      // Optionally, initialize Firestore profile with default values
+      const userProfileDefaults = {
+        name: displayName || "",
+        email: email,
+        mbaExam: "CAT",
+        phone: "",
+        location: "",
+        workExperience: "",
+        education: "",
+        achievements: "",
+        targetYear: new Date().getFullYear() + 1,
+        bio: ""
+      };
+      await db.collection("users").doc(userRecord.uid).set(userProfileDefaults);
 
       res.status(201).json({
         success: true,
@@ -45,7 +61,7 @@ class AuthController {
 
       // Verify the ID token
       const decodedToken = await admin.auth().verifyIdToken(idToken);
-      
+
       // Get additional user data
       const user = await admin.auth().getUser(decodedToken.uid);
 
@@ -69,20 +85,36 @@ class AuthController {
     }
   }
 
-  // Get current user profile
+  // Get current user profile (Firebase Auth + Firestore profile)
   async getProfile(req, res) {
     try {
-      const user = await admin.auth().getUser(req.user.uid);
-      
+      const authUser = await admin.auth().getUser(req.user.uid);
+
+      // Try getting custom profile fields from Firestore
+      const userDocSnap = await db.collection("users").doc(req.user.uid).get();
+      let customProfile = {};
+      if (userDocSnap.exists) {
+        customProfile = userDocSnap.data();
+      }
+
+      // Compose profile as expected by frontend (see Profile.jsx context)
       res.json({
         success: true,
         user: {
-          uid: user.uid,
-          email: user.email,
-          displayName: user.displayName,
-          emailVerified: user.emailVerified,
-          createdAt: user.metadata.creationTime,
-          lastLoginAt: user.metadata.lastSignInTime
+          uid: authUser.uid,
+          name: customProfile.name || authUser.displayName || '',
+          email: customProfile.email || authUser.email || '',
+          mbaExam: customProfile.mbaExam || 'CAT',
+          phone: customProfile.phone || '',
+          location: customProfile.location || '',
+          workExperience: customProfile.workExperience || '',
+          education: customProfile.education || '',
+          achievements: customProfile.achievements || '',
+          targetYear: customProfile.targetYear || new Date().getFullYear() + 1,
+          bio: customProfile.bio || '',
+          emailVerified: authUser.emailVerified,
+          createdAt: authUser.metadata.creationTime,
+          lastLoginAt: authUser.metadata.lastSignInTime
         }
       });
     } catch (error) {
@@ -94,21 +126,70 @@ class AuthController {
     }
   }
 
-  // Update user profile
+  // Update user profile (displayName in Auth + extended data in Firestore)
   async updateProfile(req, res) {
     try {
-      const { displayName } = req.body;
-      
-      const user = await admin.auth().updateUser(req.user.uid, {
-        displayName
-      });
+      // Accept all relevant fields
+      const {
+        name,
+        displayName,
+        mbaExam,
+        phone,
+        location,
+        workExperience,
+        education,
+        achievements,
+        targetYear,
+        bio
+      } = req.body;
+
+      // Update displayName in Firebase Auth only if provided
+      if (displayName || name) {
+        await admin.auth().updateUser(req.user.uid, {
+          displayName: displayName || name // prefer explicit displayName
+        });
+      }
+
+      // Update Firestore with custom profile info (use merge to preserve unknown fields)
+      const updatePayload = {};
+      if (name !== undefined) updatePayload.name = name;
+      if (displayName !== undefined) updatePayload.name = displayName; // for compatibility
+      if (mbaExam !== undefined) updatePayload.mbaExam = mbaExam;
+      if (phone !== undefined) updatePayload.phone = phone;
+      if (location !== undefined) updatePayload.location = location;
+      if (workExperience !== undefined) updatePayload.workExperience = workExperience;
+      if (education !== undefined) updatePayload.education = education;
+      if (achievements !== undefined) updatePayload.achievements = achievements;
+      if (targetYear !== undefined) updatePayload.targetYear = targetYear;
+      if (bio !== undefined) updatePayload.bio = bio;
+
+      if (Object.keys(updatePayload).length > 0) {
+        await db.collection("users").doc(req.user.uid).set(updatePayload, { merge: true });
+      }
+
+      // Fetch the latest user and profile
+      const user = await admin.auth().getUser(req.user.uid);
+      const userDocSnap = await db.collection("users").doc(req.user.uid).get();
+      let customProfile = {};
+      if (userDocSnap.exists) {
+        customProfile = userDocSnap.data();
+      }
 
       res.json({
         success: true,
         message: 'Profile updated successfully',
         user: {
           uid: user.uid,
-          email: user.email,
+          name: customProfile.name || user.displayName || '',
+          email: customProfile.email || user.email || '',
+          mbaExam: customProfile.mbaExam || 'CAT',
+          phone: customProfile.phone || '',
+          location: customProfile.location || '',
+          workExperience: customProfile.workExperience || '',
+          education: customProfile.education || '',
+          achievements: customProfile.achievements || '',
+          targetYear: customProfile.targetYear || new Date().getFullYear() + 1,
+          bio: customProfile.bio || '',
           displayName: user.displayName
         }
       });
@@ -146,8 +227,14 @@ class AuthController {
   // Delete user account
   async deleteAccount(req, res) {
     try {
+      // Remove user doc from Firestore if present
+      try {
+        await db.collection("users").doc(req.user.uid).delete();
+      } catch (e) {
+        // ignore if doesn't exist
+      }
       await admin.auth().deleteUser(req.user.uid);
-      
+
       res.json({
         success: true,
         message: 'Account deleted successfully'
@@ -166,7 +253,7 @@ class AuthController {
     try {
       // Generate email verification link
       const verificationLink = await admin.auth().generateEmailVerificationLink(req.user.email);
-      
+
       // In a real application, you would send this link via email
       // For demo purposes, we're returning it in the response
       res.json({
@@ -187,9 +274,9 @@ class AuthController {
   async forgotPassword(req, res) {
     try {
       const { email } = req.body;
-      
+
       const resetLink = await admin.auth().generatePasswordResetLink(email);
-      
+
       // In a real application, you would send this link via email
       res.json({
         success: true,

@@ -3,6 +3,27 @@ import { useNavigate } from 'react-router-dom';
 import SecurityWrapper from './SecurityWrapper';
 import QuizTakingInterface from './QuizTakingInterface';
 
+// Backend URL from env or fallback
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
+
+// Utility: get authentication headers (JWT from localStorage)
+const getAuthHeaders = () => {
+  const token = localStorage.getItem("authToken");
+  return {
+    "Content-Type": "application/json",
+    ...(token && { Authorization: `Bearer ${token}` })
+  };
+};
+
+// Example API call wrapper: always pass auth headers
+const fetchWithAuth = async (url, options = {}) => {
+  const headers = {
+    ...getAuthHeaders(),
+    ...(options.headers || {})
+  };
+  return fetch(url, { ...options, headers });
+};
+
 const formatTime = (seconds) => {
   if (seconds == null || Number.isNaN(seconds)) return '0s';
   if (seconds < 60) return `${seconds}s`;
@@ -120,17 +141,17 @@ const AIQuizPlatform = () => {
       const examConfig = availableExams.find(exam => exam.id === examId);
       const preferences = getAutoPreferences(examId);
 
-      const response = await fetch('https://verve-io.onrender.com/api/quiz/generate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          examType: examId,
-          examConfig,
-          preferences
-        })
-      });
+      const response = await fetchWithAuth(
+        `${BACKEND_URL}/api/quiz/generate`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            examType: examId,
+            examConfig,
+            preferences
+          })
+        }
+      );
 
       const data = await response.json();
 
@@ -158,18 +179,18 @@ const AIQuizPlatform = () => {
       setIsLoading(true);
       setError('');
 
-      const response = await fetch('https://verve-io.onrender.com/api/quiz/analysis', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          quizData: quizData,
-          userAnswers: answers,
-          timeTaken: timeTaken,
-          examType: selectedExam
-        })
-      });
+      const response = await fetchWithAuth(
+        `${BACKEND_URL}/api/quiz/analysis`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            quizData: quizData,
+            userAnswers: answers,
+            timeTaken: timeTaken,
+            examType: selectedExam
+          })
+        }
+      );
 
       const data = await response.json();
 
@@ -231,7 +252,6 @@ const AIQuizPlatform = () => {
     setAnalysis(null);
     navigate('/dashboard');
   };
-
 
   const handleBackToQuiz = () => {
     setShowDetailedAnalysis(false);

@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import dotenv from 'dotenv';
+import { admin,db } from '../config/firebase.js';
 dotenv.config();
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -82,7 +83,16 @@ async function tryAnalyzeWithModels(finalPrompt) {
 
 export const analyzeEssay = async (req, res) => {
   try {
-    const { essay, topic = 'General MBA Admission' } = req.body;
+    const { essay, topic = 'Essay' } = req.body;
+
+    // Expect req.user (populated by authMiddleware) for user id
+    const userId = req.user?.uid;
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'User authentication required to analyze and store essay results'
+      });
+    }
 
     if (!essay) {
       return res.status(400).json({
@@ -107,6 +117,35 @@ export const analyzeEssay = async (req, res) => {
       analysis = await tryAnalyzeWithModels(finalPrompt);
     } catch (err) {
       throw err;
+    }
+
+    // Store the analysis in the Firebase structure: essay > userId > [array of analysis]
+    try {
+      const assessedAt = new Date();
+
+      // Reference: top-level collection 'essay' > document (userId) > 'analyses' (array field)
+      const userDocRef = db.collection('essay').doc(userId);
+
+      // Data to append to the analyses array
+      const dataToStore = {
+        topic: topic,
+        overallAssessment: analysis.overallAssessment || null,
+        sectionScores: analysis.sectionScores || null,
+        analyzedAt: assessedAt.toISOString(),
+        essayLength: essay.length,
+        wordCount: essay.split(/\s+/).length
+      };
+
+      // Use Firestore's arrayUnion to append to the analyses array
+      await userDocRef.set(
+        {
+          analyses: admin.firestore.FieldValue.arrayUnion(dataToStore)
+        },
+        { merge: true }
+      );
+    } catch (firebaseErr) {
+      console.error('Failed to store analysis in Firebase:', firebaseErr);
+      // Proceed anyway. Do NOT block API, but add warning field to response if needed.
     }
 
     res.json({
@@ -146,87 +185,6 @@ export const analyzeEssay = async (req, res) => {
       success: false,
       error: 'Failed to analyze essay',
       details: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
-    });
-  }
-};
-
-export const bulkAnalyzeEssays = async (req, res) => {
-  try {
-    const { essays } = req.body;
-
-    if (!Array.isArray(essays) || essays.length === 0) {
-      return res.status(400).json({
-        success: false,
-        error: 'Essays array is required and cannot be empty'
-      });
-    }
-
-    // Limit bulk analysis to 5 essays at a time
-    if (essays.length > 5) {
-      return res.status(400).json({
-        success: false,
-        error: 'Bulk analysis limited to 5 essays at a time'
-      });
-    }
-
-    const analysisResults = [];
-
-    for (const essayData of essays) {
-      const { essay, topic = 'General MBA Admission', candidateId } = essayData;
-
-      if (!essay) {
-        analysisResults.push({
-          success: false,
-          candidateId,
-          error: 'Essay text is required'
-        });
-        continue;
-      }
-
-      try {
-        const finalPrompt = analysisPrompt
-          .replace('{essay}', essay)
-          .replace('{topic}', topic);
-
-        const analysis = await tryAnalyzeWithModels(finalPrompt);
-
-        analysisResults.push({
-          success: true,
-          candidateId,
-          analysis,
-          metadata: {
-            topic,
-            analyzedAt: new Date().toISOString(),
-            wordCount: essay.split(/\s+/).length
-          }
-        });
-      } catch (error) {
-        analysisResults.push({
-          success: false,
-          candidateId,
-          error: `Analysis failed: ${error.message}`
-        });
-      }
-    }
-
-    res.json({
-      success: true,
-      data: {
-        results: analysisResults,
-        summary: {
-          total: essays.length,
-          successful: analysisResults.filter(r => r.success).length,
-          failed: analysisResults.filter(r => !r.success).length
-        }
-      }
-    });
-
-  } catch (error) {
-    console.error('Bulk analysis error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to process bulk analysis',
-      details: error.message
     });
   }
 };

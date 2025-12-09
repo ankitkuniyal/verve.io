@@ -43,6 +43,9 @@ import { collection, query, getDocs, doc, getDoc } from 'firebase/firestore';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
+// Add backend url constant
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
+
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -820,17 +823,45 @@ export default function Dashboard() {
   const [newsTotalResults, setNewsTotalResults] = useState(0);
   const [newsPageSize, setNewsPageSize] = useState(6);
 
-  // Solution: always fetch all news for this demo, sort, then paginate client-side (as backend pagination may not work)
+  // --- REWRITE section to fetch MBA News from BACKEND_URL and pass auth headers
+
   useEffect(() => {
     let ignore = false;
+
     async function fetchMbaNews() {
       setNewsLoading(true);
       setNewsError(null);
+
       try {
+        // Attempt to get Firebase auth token for auth header
+        const auth = getAuth();
+        const currentUser = auth.currentUser;
+        let idToken = null;
+        if (currentUser && currentUser.getIdToken) {
+          idToken = await currentUser.getIdToken();
+        }
+        // Compose headers
+        const headers = {
+          'Content-Type': 'application/json',
+        };
+        if (idToken) {
+          headers['Authorization'] = `Bearer ${idToken}`;
+        } else {
+          // try token from localStorage as fallback (in case)
+          const token =
+            localStorage.getItem('token') || sessionStorage.getItem('token');
+          if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+          }
+        }
+
         // Fetch with large enough pageSize for all records, to ensure we can sort and paginate client-side
-        // TODO: Replace 100 with total results count for production, or implement correct API pagination.
-        const url = `https://verve-io.onrender.com/api/services/news?language=en&page=1&pageSize=100`;
-        const res = await fetch(url);
+        // Use BACKEND_URL and not hardcoded url
+        const url = `${BACKEND_URL}/api/services/news?language=en&page=1&pageSize=100`;
+
+        const res = await fetch(url, {
+          headers,
+        });
         if (!res.ok) throw new Error('Failed to load MBA news');
         const data = await res.json();
         let allArticles = data.articles || [];
@@ -858,6 +889,7 @@ export default function Dashboard() {
         if (!ignore) setNewsLoading(false);
       }
     }
+
     fetchMbaNews();
     return () => {
       ignore = true;
