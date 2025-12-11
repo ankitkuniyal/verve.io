@@ -37,6 +37,12 @@ async function analyzeFaceFromBuffer(imageBuffer) {
       image: { content: imageBuffer }
     });
     
+    // Safety check: result might be null/undefined if API fails silently or oddly
+    if (!result) {
+       console.warn('[VisionService] Vision API returned empty/null result');
+       return null;
+    }
+
     const faces = result.faceAnnotations || [];
     console.debug(`[VisionService] Detected ${faces.length} face(s)`);
     if (!faces.length) return null;

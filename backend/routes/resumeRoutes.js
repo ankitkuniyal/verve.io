@@ -1,16 +1,8 @@
 import express from 'express';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { authenticateToken } from '../middlewares/authMiddleware.js';
+import { analyzeResumeWithGemini } from '../services/geminiService.js';
 
 const router = express.Router();
-
-// Initialize Gemini AI with retry logic
-let genAI;
-try {
-  genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-} catch (error) {
-  // No debug log
-}
 
 // In-memory cache for resume analysis
 const resumeCache = new Map();
@@ -106,110 +98,6 @@ function createCacheKey(text) {
   return `resume_${hash}`;
 }
 
-// ---------------------------------------------------------
-// FINAL FULLY-STABLE GEMINI RESUME ANALYZER (PASTE THIS)
-// ---------------------------------------------------------
-async function analyzeResumeWithGemini(resumeText) {
-  if (!genAI) {
-    throw new Error("AI service not available");
-  }
-
-  try {
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash",
-      generationConfig: {
-        temperature: 0.1,
-        maxOutputTokens: 4096,  // prevents MAX_TOKENS cutoff
-        responseMimeType: "application/json" // forces only JSON output
-      },
-    });
-
-    // Redact PII
-    const safeResume = redactPII(resumeText.substring(0, 10000));
-
-    // Strong JSON-only instruction
-    const instruction = `
-You are a resume analysis engine.
-Return ONLY valid JSON. No prose. No markdown. No comments.
-
-JSON structure:
-{
-  "strengths": [],
-  "improvements": [],
-  "grammar": [],
-  "formatting": [],
-  "missingSections": [],
-  "summary": "",
-  "atsScore": 0,
-  "keywordSuggestions": []
-}
-
-Analyze the following resume:
-${safeResume}
-`;
-
-    // CORRECT USAGE OF generateContent
-    const result = await model.generateContent([{ text: instruction }]);
-    const text = result.response.text(); // actual string output
-
-    // Removed: console.log("\n🔵 RAW GEMINI OUTPUT:\n", text);
-
-    // Case 1 — model returned strict JSON (because responseMimeType was used)
-    try {
-      return JSON.parse(text);
-    } catch (_) {
-      // Removed: console.warn("⚠ JSON not clean, attempting extraction…");
-    }
-
-    // Case 2 — clean / extract JSON
-    const json = extractStrictJSON(text);
-    return json;
-
-  } catch (error) {
-    // Removed: console.error("Gemini analysis error:", error);
-
-    // Fallback JSON so your frontend never breaks
-    return {
-      strengths: ["Resume processed successfully"],
-      improvements: [
-        "Add quantifiable achievements",
-        "Improve clarity in work experience",
-        "Include more technical skills"
-      ],
-      grammar: ["Check spelling and tense consistency"],
-      formatting: ["Improve alignment & spacing"],
-      missingSections: ["Projects"],
-      summary: "Good potential, optimize layout & clarity.",
-      atsScore: 65,
-      keywordSuggestions: ["teamwork", "leadership", "problem solving"],
-    };
-  }
-}
-function extractStrictJSON(raw) {
-  if (!raw || typeof raw !== "string") {
-    throw new Error("Empty response from model");
-  }
-
-  // Remove markdown code fences if present
-  raw = raw.replace(/```json|```/gi, "").trim();
-
-  // Extract first JSON block (handles nested braces)
-  const start = raw.indexOf("{");
-  const end = raw.lastIndexOf("}");
-
-  if (start === -1 || end === -1) {
-    throw new Error("No JSON found in model output:\n" + raw);
-  }
-
-  const jsonString = raw.substring(start, end + 1);
-
-  try {
-    return JSON.parse(jsonString);
-  } catch (err) {
-    // Removed: console.error("❌ Failed JSON:", jsonString);
-    throw new Error("Model returned malformed JSON");
-  }
-}
 
 // POST /api/resume/analyze - Main analysis endpoint (protected)
 router.post('/analyze', authenticateToken, validateResumeInput, async (req, res) => {

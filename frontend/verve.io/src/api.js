@@ -1,5 +1,7 @@
 // Minimal API wrapper to mimic axios-like interface (returns { data })
-const baseUrl = "https://verve-io.onrender.com";
+import { getAuth } from "firebase/auth";
+
+const baseUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
 
 async function request(method, path, body = null, opts = {}) {
   const url = path.startsWith("http")
@@ -10,8 +12,16 @@ async function request(method, path, body = null, opts = {}) {
     ...(opts.headers || {}),
   };
 
-  const token = localStorage.getItem("token");
-  if (token) headers.Authorization = `Bearer ${token}`;
+  const auth = getAuth();
+  const user = auth.currentUser;
+  if (user) {
+    try {
+      const token = await user.getIdToken();
+      headers.Authorization = `Bearer ${token}`;
+    } catch (e) {
+      console.error("Failed to get token", e);
+    }
+  }
 
   const res = await fetch(url, {
     method,

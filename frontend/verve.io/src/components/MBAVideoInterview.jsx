@@ -1,47 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { ArrowLeft, Camera, Video, Clock, CheckCircle, Play, Square, SkipForward, RefreshCw, BarChart3, Download } from 'lucide-react';
+import { getAuth } from 'firebase/auth'; 
+
+// Sub-components
+import InterviewSetup from './interview/InterviewSetup';
+import InterviewWelcome from './interview/InterviewWelcome';
+import InterviewActive from './interview/InterviewActive';
+import InterviewResults from './interview/InterviewResults';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
-
-const MBA_QUESTIONS = [
-  {
-    id: 1,
-    question: "Tell us about yourself and why you're interested in pursuing an MBA at this time in your career.",
-    category: "Introduction",
-    tips: "Focus on your professional journey and clear motivations"
-  },
-  {
-    id: 2,
-    question: "Describe a time when you demonstrated leadership in a challenging situation. What was the outcome?",
-    category: "Leadership",
-    tips: "Use the STAR method: Situation, Task, Action, Result"
-  },
-  {
-    id: 3,
-    question: "What are your short-term and long-term career goals, and how will an MBA help you achieve them?",
-    category: "Career Goals",
-    tips: "Be specific about timelines and how the MBA bridges gaps"
-  },
-  {
-    id: 4,
-    question: "Tell us about a time you failed. What did you learn from that experience?",
-    category: "Self-Awareness",
-    tips: "Show vulnerability and growth mindset"
-  },
-  {
-    id: 5,
-    question: "How do you handle conflicts in team settings? Provide a specific example.",
-    category: "Teamwork",
-    tips: "Demonstrate emotional intelligence and problem-solving"
-  },
-  {
-    id: 6,
-    question: "What unique perspective or experience will you bring to our MBA program?",
-    category: "Diversity & Fit",
-    tips: "Highlight what makes you different and valuable"
-  }
-];
 
 // Fallback mock results
 const GENERATE_MOCK_RESULTS = () => ({
@@ -124,15 +90,36 @@ const GENERATE_MOCK_RESULTS = () => ({
   ]
 });
 
-// Utility: Get auth token from localStorage (or change as needed for your app's auth)
-function getAuthHeaders() {
-  const token = localStorage.getItem('token') || '';
-  // You may want 'Bearer <token>' depending on backend
-  return token ? { 'Authorization': `Bearer ${token}` } : {};
+// Utility: Get auth token from Firebase
+async function getAuthHeaders() {
+  const auth = getAuth();
+  const user = auth.currentUser;
+  if (!user) return {};
+  try {
+    const token = await user.getIdToken();
+    return token ? { 'Authorization': `Bearer ${token}` } : {};
+  } catch (error) {
+    console.error("Error getting auth token:", error);
+    return {};
+  }
 }
 
 export default function MBAVideoInterview() {
-  const [stage, setStage] = useState('welcome');
+  // Stages: 'setup' -> 'welcome' -> 'preparing' -> 'recording' -> 'completed'
+  const [stage, setStage] = useState('setup');
+  
+  // Setup Data
+  const [resumeText, setResumeText] = useState('');
+  const [targetSchool, setTargetSchool] = useState('');
+  const [exam, setExam] = useState('CAT');
+  const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
+  const [questions, setQuestions] = useState([]);
+  const [remainingCredits, setRemainingCredits] = useState(null);
+  
+  // PDF Extraction State
+  const [isExtracting, setIsExtracting] = useState(false);
+
+  // Interview State
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [prepTimeLeft, setPrepTimeLeft] = useState(30);
   const [recordTimeLeft, setRecordTimeLeft] = useState(60);
@@ -148,7 +135,6 @@ export default function MBAVideoInterview() {
   const [showResults, setShowResults] = useState(false);
   const [results, setResults] = useState(null);
   const [isGeneratingResults, setIsGeneratingResults] = useState(false);
-  const [isTranscribing, setIsTranscribing] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [apiError, setApiError] = useState(null);
   const [browserWarning, setBrowserWarning] = useState('');
@@ -167,35 +153,151 @@ export default function MBAVideoInterview() {
   const lastTranscriptRef = useRef('');
   const lastQuestionRef = useRef(null);
 
-  const currentQuestion = MBA_QUESTIONS[currentQuestionIndex];
+  const currentQuestion = questions[currentQuestionIndex];
 
   // Check browser compatibility on mount
   useEffect(() => {
     const isChrome = /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor);
-    const isFirefox = /Firefox/.test(navigator.userAgent);
-    const isEdge = /Edg/.test(navigator.userAgent);
     const isSafari = /Safari/.test(navigator.userAgent) && /Apple Computer/.test(navigator.vendor);
     
     let warning = '';
     if (isSafari) {
       warning = '⚠️ Safari has limited MediaRecorder support. For best results, use Chrome, Firefox, or Edge.';
-    } else if (!isChrome && !isFirefox && !isEdge) {
+    } else if (!isChrome) {
       warning = '⚠️ For best results, please use Chrome, Firefox, or Edge browsers.';
     }
     setBrowserWarning(warning);
 
-    // Check for MediaRecorder support
     if (!window.MediaRecorder) {
       setBrowserWarning('❌ Your browser does not support video recording. Please use Chrome, Firefox, or Edge.');
     }
   }, []);
 
-  // SPEECH RECOGNITION SETUP
+  // Load PDF.js
+  useEffect(() => {
+    if (window.pdfjsLib) return;
+    const script = document.createElement("script");
+    script.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+    script.async = true;
+    document.body.appendChild(script);
+    script.onload = () => {
+      if (window.pdfjsLib) {
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+      }
+    };
+    return () => {
+      // document.body.removeChild(script); 
+    };
+  }, []);
+
+  // --------------- PDF EXTRACTION ----------------
+  const extractTextFromPDF = async (pdfFile) => {
+    if (!window.pdfjsLib) {
+        throw new Error("PDF parser not loaded yet. Please try again in a moment.");
+    }
+    const arrayBuffer = await pdfFile.arrayBuffer();
+    const pdf = await window.pdfjsLib.getDocument(arrayBuffer).promise;
+    let text = "";
+    for (let i = 1; i <= Math.min(pdf.numPages, 10); i++) { // Limit to 10 pages
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        const strings = content.items.map((item) => item.str);
+        text += strings.join(" ") + "\n";
+    }
+    return text;
+  };
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    if (file.type !== "application/pdf") {
+        setApiError("Please upload a PDF file.");
+        return;
+    }
+
+    setIsExtracting(true);
+    setApiError("");
+    setResumeText("Extracting text from resume...");
+    
+    try {
+        const text = await extractTextFromPDF(file);
+        if (text.trim().length < 50) {
+            throw new Error("Could not extract enough text from this PDF. It might be scanned/image-based.");
+        }
+        setResumeText(text);
+    } catch (err) {
+        console.error(err);
+        setApiError(err.message || "Failed to read PDF.");
+        setResumeText(""); 
+    } finally {
+        setIsExtracting(false);
+    }
+  };
+
+  // --------------- GENERATION LOGIC ----------------
+  const handleGenerateQuestions = async () => {
+    if (!resumeText || !targetSchool) {
+      setApiError("Please enter your resume and target school.");
+      return;
+    }
+
+    setIsGeneratingQuestions(true);
+    setApiError(null);
+
+    try {
+      const headers = await getAuthHeaders();
+      const response = await fetch(`${BACKEND_URL}/api/services/interview/generate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...headers // spread the awaited headers object
+        },
+        body: JSON.stringify({
+          resumeText,
+          targetSchool,
+          exam
+        })
+      });
+
+      const data = await response.json();
+      console.log(data);
+      if (!response.ok) {
+        if (response.status === 403 && data.requiresSubscription) {
+            throw new Error(`Insufficient Credits. Please upgrade or contact support.`);
+        }
+        throw new Error(data.error || "Failed to generate questions");
+      }
+
+      if (data.success && data.data && data.data.questions) {
+        // Map backend questions to our format
+        const mappedQuestions = data.data.questions.map((q, idx) => ({
+            id: q.id || idx + 1,
+            question: q.text, // Text from Gemini
+            category: q.type || "General",
+            tips: q.context || "Be specific and confident."
+        }));
+
+        setQuestions(mappedQuestions);
+        setRemainingCredits(data.remainingCredits);
+        setStage('welcome');
+      } else {
+        throw new Error("Invalid response format");
+      }
+
+    } catch (err) {
+      console.error(err);
+      setApiError(err.message);
+    } finally {
+      setIsGeneratingQuestions(false);
+    }
+  };
+
+  // --------------- SPEECH RECOGNITION ---------------
   useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     
     if (!SpeechRecognition) {
-      console.warn('Speech recognition not supported in this browser');
       setSpeechRecognitionSupported(false);
       return;
     }
@@ -206,14 +308,10 @@ export default function MBAVideoInterview() {
     recognition.lang = 'en-US';
     recognition.maxAlternatives = 1;
 
-    recognition.onstart = () => {
-      console.log('🎤 Speech recognition started');
-      setIsListening(true);
-    };
-
+    recognition.onstart = () => setIsListening(true);
+    
     recognition.onresult = (event) => {
       let interimTranscript = '';
-      
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const transcriptPart = event.results[i][0].transcript;
         if (event.results[i].isFinal) {
@@ -222,18 +320,11 @@ export default function MBAVideoInterview() {
           interimTranscript += transcriptPart;
         }
       }
-
       setTranscript(transcriptRef.current + interimTranscript);
     };
 
     recognition.onerror = (event) => {
-      console.error('Speech recognition error:', event.error);
-      
-      if (event.error === 'no-speech' || event.error === 'audio-capture') {
-        console.log('No speech detected, continuing to listen...');
-        return;
-      }
-      
+      if (event.error === 'no-speech' || event.error === 'audio-capture') return;
       if (recognitionRef.current) {
         recognitionRef.current.stop();
         setIsListening(false);
@@ -241,156 +332,62 @@ export default function MBAVideoInterview() {
     };
 
     recognition.onend = () => {
-      console.log('🎤 Speech recognition ended');
       setIsListening(false);
-      
       if (stage === 'recording' && !isListening) {
-        console.log('🔄 Auto-restarting speech recognition');
         setTimeout(() => {
           if (recognitionRef.current && stage === 'recording') {
-            try {
-              recognitionRef.current.start();
-            } catch (err) {
-              console.error('Failed to restart speech recognition:', err);
-            }
+            try { recognitionRef.current.start(); } catch (e) {}
           }
         }, 500);
       }
     };
 
     recognitionRef.current = recognition;
-
     return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-      }
+      if (recognitionRef.current) recognitionRef.current.stop();
     };
   }, []);
 
-  // Start/stop speech recognition based on recording state
   useEffect(() => {
     if (!recognitionRef.current || !speechRecognitionSupported) return;
-
     if (stage === 'recording' && !isListening) {
-      console.log('🚀 Starting speech recognition for recording');
       transcriptRef.current = '';
       setTranscript('');
-      
-      setTimeout(() => {
-        try {
-          recognitionRef.current.start();
-        } catch (err) {
-          console.error('Failed to start speech recognition:', err);
-          setSpeechRecognitionSupported(false);
-        }
-      }, 1000);
+      setTimeout(() => { try { recognitionRef.current.start(); } catch (e) {} }, 1000);
     } else if (stage !== 'recording' && isListening) {
-      console.log('🛑 Stopping speech recognition');
       recognitionRef.current.stop();
     }
-  }, [stage, isListening, speechRecognitionSupported]);
+  }, [stage, isListening]);
 
-  // Reset transcript when moving to new question
-  useEffect(() => {
-    if (stage === 'preparing') {
-      transcriptRef.current = '';
-      setTranscript('');
-    }
-  }, [currentQuestionIndex, stage]);
-
-  // CAMERA INITIALIZATION
+  // --------------- CAMERA & RECORDING ---------------
   const startCamera = async () => {
     setIsLoadingCamera(true);
     setCameraError('');
-    setApiError(null);
-
     try {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-        streamRef.current = null;
-      }
-
-      const constraints = {
-        video: {
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          facingMode: 'user',
-          frameRate: { ideal: 30 }
-        },
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          sampleRate: 48000
-        }
-      };
-
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
+        audio: { echoCancellation: true, noiseSuppression: true }
+      });
       streamRef.current = stream;
-
       setIsCameraOn(true);
       setStage('preparing');
       
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      if (videoRef.current && streamRef.current) {
-        videoRef.current.srcObject = streamRef.current;
-        videoRef.current.muted = true;
-        
-        await new Promise((resolve, reject) => {
-          if (!videoRef.current) return reject(new Error('Video element not found'));
-          
-          const timeout = setTimeout(() => reject(new Error('Video load timeout')), 5000);
-          
-          videoRef.current.onloadedmetadata = () => {
-            clearTimeout(timeout);
-            resolve();
-          };
-          
-          videoRef.current.onerror = (e) => {
-            clearTimeout(timeout);
-            reject(new Error('Video element error'));
-          };
-        });
-
-        try {
-          await videoRef.current.play();
-          console.log('✅ Camera started successfully');
-        } catch (playError) {
-          console.warn('Play error (trying muted):', playError);
-          videoRef.current.muted = true;
-          await videoRef.current.play();
+      // Allow video element time to mount
+      setTimeout(async () => {
+        if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+            videoRef.current.muted = true;
+            try { await videoRef.current.play(); } catch (e) { console.error(e); }
         }
-      }
-
+      }, 100);
+      
       setIsLoadingCamera(false);
       startPrepTimer();
-
     } catch (err) {
-      console.error('❌ Camera initialization failed:', err);
+      console.error(err);
       setIsLoadingCamera(false);
       setStage('welcome');
-      setIsCameraOn(false);
-      
-      let errorMessage = '❌ Unable to access your camera. ';
-      
-      if (err.name === 'NotAllowedError') {
-        errorMessage += 'Please allow camera and microphone permissions and try again.';
-      } else if (err.name === 'NotFoundError') {
-        errorMessage += 'No camera found. Please check your device.';
-      } else if (err.name === 'NotReadableError') {
-        errorMessage += 'Camera is already in use by another application.';
-      } else if (err.name === 'OverconstrainedError') {
-        errorMessage += 'Camera does not support the required settings.';
-      } else {
-        errorMessage += err.message || 'Please check your camera and try again.';
-      }
-      
-      setCameraError(errorMessage);
-      
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-        streamRef.current = null;
-      }
+      setCameraError('Unable to access camera. Please check permissions.');
     }
   };
 
@@ -399,35 +396,18 @@ export default function MBAVideoInterview() {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
     }
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
+    if (videoRef.current) videoRef.current.srcObject = null;
     setIsCameraOn(false);
-    setIsLoadingCamera(false);
   };
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (prepTimerRef.current) clearInterval(prepTimerRef.current);
-      if (recordTimerRef.current) clearInterval(recordTimerRef.current);
-      stopCamera();
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-      }
-    };
-  }, []);
-
-  // Prep timer
   const startPrepTimer = () => {
     setPrepTimeLeft(30);
     if (prepTimerRef.current) clearInterval(prepTimerRef.current);
-
     prepTimerRef.current = setInterval(() => {
       setPrepTimeLeft(prev => {
         if (prev <= 1) {
           clearInterval(prepTimerRef.current);
-          setTimeout(() => startRecording(), 500);
+          setTimeout(startRecording, 500);
           return 0;
         }
         return prev - 1;
@@ -435,83 +415,39 @@ export default function MBAVideoInterview() {
     }, 1000);
   };
 
-  // Skip prep timer and immediately go to recording
   const skipPrepTimer = () => {
     if (prepTimerRef.current) clearInterval(prepTimerRef.current);
     setPrepTimeLeft(0);
-    setTimeout(() => startRecording(), 100);
+    setTimeout(startRecording, 100);
   };
 
-  // Optimized video recording start
   const startRecording = () => {
-    if (!streamRef.current) {
-      console.error('No stream available for recording');
-      alert('Please enable camera first');
-      return;
-    }
+    if (!streamRef.current) return;
+    
+    // Choose mimeType
+    const mimeTypes = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'];
+    let selectedMimeType = mimeTypes.find(type => MediaRecorder.isTypeSupported(type)) || 'video/webm';
 
     try {
-      // Better MIME type detection with fallbacks
-      const mimeTypes = [
-        'video/webm;codecs=vp9,opus',
-        'video/webm;codecs=vp8,opus',
-        'video/webm;codecs=h264,opus',
-        'video/webm'
-      ];
+      const recorder = new MediaRecorder(streamRef.current, { mimeType: selectedMimeType });
+      const chunks = [];
       
-      let selectedMimeType = 'video/webm';
-      for (const mime of mimeTypes) {
-        if (MediaRecorder.isTypeSupported(mime)) {
-          selectedMimeType = mime;
-          break;
-        }
-      }
-
-      console.log('🎥 Using MIME type:', selectedMimeType);
-
-      const recorder = new MediaRecorder(streamRef.current, { 
-        mimeType: selectedMimeType,
-        videoBitsPerSecond: 2_500_000,
-        audioBitsPerSecond: 128_000
-      });
-      
-      const recordedChunks = [];
-
-      // Keep track of the question being answered
       lastQuestionRef.current = currentQuestion;
-      
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) {
-          recordedChunks.push(e.data);
-        }
-      };
 
+      recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
       recorder.onstop = () => {
-        const blob = new Blob(recordedChunks, { type: selectedMimeType });
-        console.log('Recording completed. Size:', Math.round(blob.size / 1024 / 1024 * 100) / 100, 'MB');
-
-        const transcriptForThisQuestion = lastTranscriptRef.current || transcriptRef.current || '';
-
-        // Store this question's data
-        setAnswers(prev => [
-          ...prev,
-          {
+        const blob = new Blob(chunks, { type: selectedMimeType });
+        const finalTranscript = lastTranscriptRef.current || transcriptRef.current || '';
+        
+        setAnswers(prev => [...prev, {
             questionId: lastQuestionRef.current?.id,
             question: lastQuestionRef.current?.question,
-            transcript: transcriptForThisQuestion.trim(),
+            transcript: finalTranscript.trim(),
             videoBlob: blob
-          }
-        ]);
-
-        setMediaRecorder(null);
+        }]);
       };
 
-      recorder.onerror = (e) => {
-        console.error('Recording error:', e);
-        alert('Recording failed. Please try again.');
-      };
-
-      recorder.start(1000); // Collect data every second
+      recorder.start(1000);
       setMediaRecorder(recorder);
       setIsRecording(true);
       setStage('recording');
@@ -527,22 +463,18 @@ export default function MBAVideoInterview() {
           return prev - 1;
         });
       }, 1000);
+
     } catch (err) {
-      console.error('Recording setup failed:', err);
-      alert('Recording failed to start. Please check your device permissions.');
+      console.error(err);
+      alert('Recording failed to start.');
     }
   };
 
   const stopRecording = () => {
-    if (recordTimerRef.current) {
-      clearInterval(recordTimerRef.current);
-      recordTimerRef.current = null;
-    }
-
-    // Capture transcript for this question
+    if (recordTimerRef.current) clearInterval(recordTimerRef.current);
+    
     lastTranscriptRef.current = transcriptRef.current;
-
-    // Stop speech recognition
+    
     if (recognitionRef.current && isListening) {
       recognitionRef.current.stop();
       setIsListening(false);
@@ -554,7 +486,7 @@ export default function MBAVideoInterview() {
       setCompletedQuestions(prev => [...prev, currentQuestion.id]);
 
       setTimeout(() => {
-        if (currentQuestionIndex < MBA_QUESTIONS.length - 1) {
+        if (currentQuestionIndex < questions.length - 1) {
           setCurrentQuestionIndex(prev => prev + 1);
           setStage('preparing');
           setTranscript('');
@@ -567,257 +499,130 @@ export default function MBAVideoInterview() {
     }
   };
 
-  const skipQuestion = () => {
-    if (prepTimerRef.current) clearInterval(prepTimerRef.current);
-    if (recordTimerRef.current) clearInterval(recordTimerRef.current);
-    
-    if (recognitionRef.current && isListening) {
-      recognitionRef.current.stop();
-      setIsListening(false);
-    }
-    
-    if (mediaRecorder && isRecording) {
-      mediaRecorder.stop();
-      setIsRecording(false);
-    }
-
-    setCompletedQuestions(prev => [...prev, currentQuestion.id]);
-
-    if (currentQuestionIndex < MBA_QUESTIONS.length - 1) {
-      setCurrentQuestionIndex(prev => prev + 1);
-      setStage('preparing');
-      setTranscript('');
-      startPrepTimer();
-    } else {
-      setStage('completed');
-      stopCamera();
-    }
-  };
-
-  // Compress video if too large
-  const compressVideo = async (blob) => {
-    return new Promise((resolve) => {
-      // Simple compression - reduce quality if too large
-      if (blob.size > 50 * 1024 * 1024) { // > 50MB
-        console.log('Video file is large. Reducing quality...');
-        // For now, just return the blob
-        // In production, implement proper compression with FFmpeg or similar
-        resolve(blob);
-      } else {
-        resolve(blob);
-      }
-    });
-  };
-
-  // Generate results with retry logic
-  const generateResultsWithRetry = async (retries = 3) => {
-    for (let i = 0; i < retries; i++) {
-      try {
-        await generateResults();
-        setApiError(null);
-        return;
-      } catch (err) {
-        const errorMsg = `Attempt ${i + 1} failed: ${err.message}`;
-        setApiError(errorMsg);
-        console.error(errorMsg);
-        
-        if (i < retries - 1) {
-          // Exponential backoff
-          const delay = 2000 * (i + 1);
-          await new Promise(resolve => setTimeout(resolve, delay));
-        }
-      }
-    }
-    throw new Error('All retry attempts failed');
-  };
-
-  // Main function to call backend
   const generateResults = async () => {
-    if (!answers.length) {
-      alert('No recorded answers found to analyze.');
-      return;
-    }
-
     setIsGeneratingResults(true);
-    setUploadProgress(0);
     setApiError(null);
+    setUploadProgress(0); // Reset
 
     try {
       const formData = new FormData();
-
-      // Create metadata in EXACT format backend expects
       const metadata = answers.map((ans, idx) => ({
         index: idx,
         questionId: ans.questionId || idx + 1,
-        question: ans.question || MBA_QUESTIONS[idx]?.question || `Question ${idx + 1}`,
+        question: ans.question,
         transcript: ans.transcript || ""
       }));
 
-      console.log('📋 Sending metadata:', metadata);
       formData.append('metadata', JSON.stringify(metadata));
 
-      // Attach each video blob with proper naming
-      for (let idx = 0; idx < answers.length; idx++) {
-        const ans = answers[idx];
-        if (ans.videoBlob && ans.videoBlob.size > 0) {
-          const compressedBlob = await compressVideo(ans.videoBlob);
-          formData.append(
-            `video_${idx}`,
-            compressedBlob,
-            `question_${ans.questionId || idx}.webm`
-          );
-          console.log(`📹 Added video_${idx}, size: ${Math.round(compressedBlob.size / 1024 / 1024 * 100) / 100}MB`);
-        } else {
-          console.warn(`⚠️ No video blob for question ${idx}`);
+      answers.forEach((ans, idx) => {
+        if (ans.videoBlob) {
+            formData.append(`video_${idx}`, ans.videoBlob, `q${ans.questionId}.webm`);
         }
-      }
-
-      console.log('📤 Sending form data with:', {
-        metadataCount: metadata.length,
-        videoCount: answers.filter(a => a.videoBlob).length,
-        totalSize: answers.reduce((sum, a) => sum + (a.videoBlob?.size || 0), 0) / (1024 * 1024)
       });
-
-      // Use XMLHttpRequest for progress tracking
-      const xhr = new XMLHttpRequest();
       
-      xhr.upload.addEventListener('progress', (event) => {
-        if (event.lengthComputable) {
-          const percentComplete = (event.loaded / event.total) * 100;
-          setUploadProgress(Math.round(percentComplete));
-        }
+      const headers = await getAuthHeaders();
+      const response = await fetch(`${BACKEND_URL}/api/services/interview`, {
+        method: 'POST',
+        headers: headers,
+        body: formData
       });
+      
+      const data = await response.json();
+      
+      if (!response.ok) throw new Error(data.error || "Analysis failed");
 
-      // Set up auth headers
-      const authHeaders = getAuthHeaders();
-
-      const response = await new Promise((resolve, reject) => {
-        xhr.onreadystatechange = () => {
-          if (xhr.readyState === 4) {
-            if (xhr.status === 200) {
-              resolve(xhr.responseText);
-            } else {
-              reject(new Error(`Server responded with status ${xhr.status}`));
-            }
-          }
-        };
-        
-        xhr.onerror = () => {
-          reject(new Error('Network error occurred while uploading'));
-        };
-        
-        // Use env BACKEND_URL and pass auth headers
-        xhr.open('POST', `${BACKEND_URL}/api/services/interview`);
-        // Append auth headers
-        Object.entries(authHeaders).forEach(([k, v]) => {
-          xhr.setRequestHeader(k, v);
-        });
-        xhr.send(formData);
-      });
-
-      console.log('📥 Raw response:', response);
-
-      let data;
-      try {
-        data = JSON.parse(response);
-      } catch (parseError) {
-        console.error('Failed to parse response:', parseError, response);
-        throw new Error('Invalid JSON response from server');
-      }
-
-      // Handle different response formats
-      if (data.error) {
-        throw new Error(data.error);
-      } else if (data.evaluation) {
-        // Backend returns { success, evaluation, rawData }
-        setResults(data.evaluation);
-      } else if (data.overallScore) {
-        // Backend returns evaluation directly
-        setResults(data);
-      } else {
-        console.error('Unexpected response format:', data);
-        throw new Error('Invalid response format from server');
-      }
-
+      setResults(data.evaluation || data);
       setShowResults(true);
       setUploadProgress(100);
-      
+
     } catch (err) {
-      console.error('❌ Error generating results:', err);
-      setApiError(`Failed to generate results: ${err.message}`);
-      
-      // Fallback to mock results
-      const analysisResults = GENERATE_MOCK_RESULTS();
-      setResults(analysisResults);
+      console.error(err);
+      setApiError("Analysis failed. Using mock results for demo.");
+      setResults(GENERATE_MOCK_RESULTS());
       setShowResults(true);
-      
-      // Don't throw here, let retry logic handle it
-      throw err;
     } finally {
       setIsGeneratingResults(false);
     }
   };
 
   const resetInterview = () => {
-    setStage('welcome');
+    setStage('setup');
+    setQuestions([]);
+    setResumeText('');
     setCurrentQuestionIndex(0);
     setCompletedQuestions([]);
     setShowResults(false);
     setResults(null);
     setTranscript('');
-    transcriptRef.current = '';
     setAnswers([]);
-    setUploadProgress(0);
-    setApiError(null);
   };
 
-  const downloadResults = () => {
-    const element = document.createElement("a");
-    const file = new Blob([JSON.stringify(results, null, 2)], { type: 'application/json' });
-    element.href = URL.createObjectURL(file);
-    element.download = `mba-interview-results-${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(element);
-    element.click();
-    document.body.removeChild(element);
-  };
+  // --------------- MAIN RENDER ----------------
+  // Based on "stage" state, render the appropriate sub-component
 
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
+  if (stage === 'setup') {
+    return (
+      <InterviewSetup 
+        resumeText={resumeText}
+        setResumeText={setResumeText}
+        targetSchool={targetSchool}
+        setTargetSchool={setTargetSchool}
+        exam={exam}
+        setExam={setExam}
+        isExtracting={isExtracting}
+        handleFileChange={handleFileChange}
+        handleGenerateQuestions={handleGenerateQuestions}
+        isGeneratingQuestions={isGeneratingQuestions}
+        apiError={apiError}
+      />
+    );
+  }
 
-  const progressPercent = (completedQuestions.length / MBA_QUESTIONS.length) * 100;
+  if (stage === 'welcome') {
+    return (
+      <InterviewWelcome 
+        questions={questions}
+        targetSchool={targetSchool}
+        remainingCredits={remainingCredits}
+        browserWarning={browserWarning}
+        cameraError={cameraError}
+        isLoadingCamera={isLoadingCamera}
+        startCamera={startCamera}
+        resetInterview={resetInterview}
+      />
+    );
+  }
 
-  const ScoreBar = ({ score, label }) => (
-    <div className="flex items-center gap-4 mb-4">
-      <div className="w-32 text-sm font-medium text-slate-700">{label}</div>
-      <div className="flex-1 bg-slate-200 rounded-full h-4">
-        <div 
-          className={`h-4 rounded-full ${
-            score >= 90 ? 'bg-green-500' :
-            score >= 80 ? 'bg-green-400' :
-            score >= 70 ? 'bg-yellow-500' :
-            score >= 60 ? 'bg-orange-500' : 'bg-red-500'
-          }`}
-          style={{ width: `${score}%` }}
-        />
-      </div>
-      <div className="w-12 text-right font-bold text-slate-800">{score}%</div>
-    </div>
-  );
+  if (['preparing', 'recording'].includes(stage)) {
+    return (
+      <InterviewActive
+        stage={stage}
+        currentQuestionIndex={currentQuestionIndex}
+        totalQuestions={questions.length}
+        currentQuestion={currentQuestion}
+        recordTimeLeft={recordTimeLeft}
+        prepTimeLeft={prepTimeLeft}
+        skipPrepTimer={skipPrepTimer}
+        transcript={transcript}
+        videoRef={videoRef}
+        stopRecording={stopRecording}
+      />
+    );
+  }
 
-  return (
-    <div className="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen py-8">
-      <div className="max-w-7xl mx-auto">
-        {/* ... UI UNCHANGED ... */}
-        {/* (The remainder of the code is unchanged and omitted for brevity, see prior versions for UI code) */}
-        {/* Full UI code would be included here */}
-        {/* --- The rest of the code block is unchanged from original --- */}
-        {/* --- Please refer to original for full UI and content --- */}
-        {/*  */}
-        {/* All API requests will now use BACKEND_URL and auth headers as needed */}
-      </div>
-    </div>
-  );
+  if (stage === 'completed' || showResults) {
+    return (
+      <InterviewResults 
+        results={results}
+        isGeneratingResults={isGeneratingResults}
+        uploadProgress={uploadProgress}
+        apiError={apiError}
+        generateResults={generateResults}
+        resetInterview={resetInterview}
+      />
+    );
+  }
+
+  return <div>Loading...</div>;
 }

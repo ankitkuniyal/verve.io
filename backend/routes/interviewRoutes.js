@@ -68,4 +68,12 @@ router.post('/', authenticateToken, upload.any(), (req, res, next) => {
   analyzeInterview(req, res, next);
 });
 
+// Import new dependencies
+import { checkInterviewCredits } from '../middlewares/subscriptionMiddleware.js';
+import { generateQuestions } from '../controllers/interviewController.js';
+
+// Generate Questions Route
+router.post('/generate', authenticateToken, checkInterviewCredits, generateQuestions);
+
+
 export default router;

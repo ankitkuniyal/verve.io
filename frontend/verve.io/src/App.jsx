@@ -5,7 +5,7 @@ import { useAuth } from './hooks/useAuth';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
 import Dashboard from './components/Dashboard';
-import ResumeParser from './components/ResumeParser';
+import ResumeParser from './components/ResumeAnalyzer';
 import EssayWritingPage from './components/EssayWritingPage';
 import MBAVideoInterview from './components/MBAVideoInterview';
 import LoadingSpinner from './components/ui/LoadingSpinner';

@@ -1,6 +1,6 @@
 // controllers/authController.js
-import { admin, db, doc } from '../config/firebase.js';
-// Do NOT import Firestore from 'firebase-admin/firestore'; use our firebase.js wrapper instead
+import { admin } from '../config/firebase.js';
+import { userModel } from '../models/userModel.js';
 
 class AuthController {
   // Register new user
@@ -32,9 +32,11 @@ class AuthController {
         education: "",
         achievements: "",
         targetYear: new Date().getFullYear() + 1,
-        bio: ""
+        bio: "",
+        credits: 1 // Free trial interview
       };
-      await db.collection("users").doc(userRecord.uid).set(userProfileDefaults);
+      
+      await userModel.createUser(userRecord.uid, userProfileDefaults);
 
       res.status(201).json({
         success: true,
@@ -90,12 +92,8 @@ class AuthController {
     try {
       const authUser = await admin.auth().getUser(req.user.uid);
 
-      // Try getting custom profile fields from Firestore
-      const userDocSnap = await db.collection("users").doc(req.user.uid).get();
-      let customProfile = {};
-      if (userDocSnap.exists) {
-        customProfile = userDocSnap.data();
-      }
+      // Try getting custom profile fields from Firestore Model
+      const customProfile = await userModel.getUser(req.user.uid) || {};
 
       // Compose profile as expected by frontend (see Profile.jsx context)
       res.json({
@@ -150,10 +148,10 @@ class AuthController {
         });
       }
 
-      // Update Firestore with custom profile info (use merge to preserve unknown fields)
+      // Update Firestore with custom profile info
       const updatePayload = {};
       if (name !== undefined) updatePayload.name = name;
-      if (displayName !== undefined) updatePayload.name = displayName; // for compatibility
+      if (displayName !== undefined) updatePayload.name = displayName;
       if (mbaExam !== undefined) updatePayload.mbaExam = mbaExam;
       if (phone !== undefined) updatePayload.phone = phone;
       if (location !== undefined) updatePayload.location = location;
@@ -164,16 +162,12 @@ class AuthController {
       if (bio !== undefined) updatePayload.bio = bio;
 
       if (Object.keys(updatePayload).length > 0) {
-        await db.collection("users").doc(req.user.uid).set(updatePayload, { merge: true });
+        await userModel.updateUser(req.user.uid, updatePayload);
       }
 
       // Fetch the latest user and profile
       const user = await admin.auth().getUser(req.user.uid);
-      const userDocSnap = await db.collection("users").doc(req.user.uid).get();
-      let customProfile = {};
-      if (userDocSnap.exists) {
-        customProfile = userDocSnap.data();
-      }
+      const customProfile = await userModel.getUser(req.user.uid) || {};
 
       res.json({
         success: true,
@@ -229,7 +223,7 @@ class AuthController {
     try {
       // Remove user doc from Firestore if present
       try {
-        await db.collection("users").doc(req.user.uid).delete();
+        await userModel.deleteUser(req.user.uid);
       } catch (e) {
         // ignore if doesn't exist
       }
@@ -255,11 +249,12 @@ class AuthController {
       const verificationLink = await admin.auth().generateEmailVerificationLink(req.user.email);
 
       // In a real application, you would send this link via email
-      // For demo purposes, we're returning it in the response
+      // For security, do NOT return it to the client.
+      console.log(`[SECURE_LOG] Email Verification Link for ${req.user.email}: ${verificationLink}`);
+
       res.json({
         success: true,
-        message: 'Email verification link generated',
-        verificationLink
+        message: 'Verification email sent (Simulated). Check server logs.'
       });
     } catch (error) {
       console.error('Verify email error:', error);
@@ -278,10 +273,11 @@ class AuthController {
       const resetLink = await admin.auth().generatePasswordResetLink(email);
 
       // In a real application, you would send this link via email
+      console.log(`[SECURE_LOG] Password Reset Link for ${email}: ${resetLink}`);
+
       res.json({
         success: true,
-        message: 'Password reset link generated',
-        resetLink
+        message: 'If an account exists, a reset link has been sent.'
       });
     } catch (error) {
       console.error('Forgot password error:', error);

@@ -70,9 +70,9 @@ export async function analyzeInterview(req, res) {
         const visionSummary = await analyzeFramesNonVerbal(frames);
         console.debug(`[analyzeInterview] Vision summary for "${file.filename}":`, visionSummary);
         
-        // Note: Add speech-to-text transcription here if needed
-        // For now, using empty transcript
-        const transcript = "";
+        // Note: Client performs speech-to-text. We use that transcript.
+        const transcript = questionData.transcript || "";
+        console.debug(`[analyzeInterview] Using transcript length: ${transcript.length}`);
         
         interviewData.push({
           ...questionData,
@@ -144,11 +144,80 @@ export async function analyzeInterview(req, res) {
       });
     }
     
+    // ... (existing catch block)
   } catch (error) {
     console.error(`[analyzeInterview] Fatal error in handler:`, error);
     res.status(500).json({
       error: 'Analysis failed',
       message: error.message
     });
+  }
+}
+
+/**
+ * Generate Interview Questions
+ * POST /api/services/interview/generate
+ */
+import { userModel } from '../models/userModel.js';
+import { interviewModel } from '../models/interviewModel.js';
+import { generateInterviewQuestions } from '../services/geminiService.js';
+
+export async function generateQuestions(req, res) {
+  try {
+    const { resumeText, targetSchool, exam, domain, experienceLevel } = req.body;
+    const userId = req.user.uid;
+    // const userCredits = req.userCredits; // Deprecated: we check atomically below but can still use for initial generic check if desired.
+
+    if (!resumeText) {
+      return res.status(400).json({ error: "Resume text is required" });
+    }
+    
+    // 1. Generate Questions
+    console.debug(`[generateQuestions] Generating for user ${userId}, School: ${targetSchool}`);
+    
+    // Context buffer
+    const context = {
+      targetSchool,
+      exam: exam || "MBA Entrance",
+      domain: domain || "General Management",
+      experienceLevel: experienceLevel || "N/A"
+    };
+
+    const questionsData = await generateInterviewQuestions(resumeText, context, targetSchool);
+    
+    // 2. Decrement Credits (Atomic Transaction via Model)
+    let remainingCredits;
+    try {
+        remainingCredits = await userModel.deductCredit(userId);
+    } catch (txError) {
+        if (txError.message === "Insufficient credits") {
+            return res.status(403).json({ error: "Insufficient credits", requiresSubscription: true });
+        }
+        throw txError;
+    }
+
+    // 3. Save Interview Session (via Model)
+    try {
+        await interviewModel.createInterview({
+            userId,
+            targetSchool,
+            questions: questionsData.questions,
+            status: 'generated',
+            resumeSnapshot: resumeText.substring(0, 500) + "..."
+        });
+    } catch (saveError) {
+        console.warn("Failed to save interview history:", saveError);
+    }
+
+    // 4. Return
+    res.json({
+      success: true,
+      data: questionsData,
+      remainingCredits: remainingCredits
+    });
+
+  } catch (error) {
+    console.error("[generateQuestions] Error:", error);
+    res.status(500).json({ error: "Failed to generate interview questions" });
   }
 }

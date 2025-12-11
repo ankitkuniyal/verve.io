@@ -1,746 +1,424 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import { 
   Play, 
-  Pause, 
   Upload, 
   Brain, 
   Video, 
-  FileText, 
   BarChart3, 
-  Award, 
-  Clock, 
+  CheckCircle, 
+  Zap, 
   Shield,
   Users,
-  Target,
-  Star,
-  ChevronUp,
   ArrowRight,
-  CheckCircle,
-  Zap,
-  MessageCircle,
-  UserCheck,
-  TrendingUp
+  TrendingUp,
+  Award,
+  Star,
+  Sparkles
 } from "lucide-react";
 
-// Backend URL from env or fallback
+// Backend URL
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
 
-// Utility: get authentication headers
-const getAuthHeaders = () => {
-  // Example: If using JWT stored in localStorage
-  const token = localStorage.getItem("authToken");
-  return {
-    "Content-Type": "application/json",
-    ...(token && { Authorization: `Bearer ${token}` })
-  };
-};
+// --- Components ---
 
-// Example API call wrapper
-const fetchWithAuth = async (url, options = {}) => {
-  const headers = {
-    ...getAuthHeaders(),
-    ...(options.headers || {})
-  };
-  return fetch(url, { ...options, headers });
-};
-
-
-// Mock data for charts and statistics
-const performanceData = {
-  labels: ["Communication", "Confidence", "Content", "Body Language", "Overall"],
-  datasets: [
-    {
-      label: "Your Score",
-      data: [75, 68, 82, 60, 72],
-      backgroundColor: "rgba(99, 102, 241, 0.8)",
-      borderColor: "rgba(99, 102, 241, 1)",
-      borderWidth: 2,
-    },
-    {
-      label: "Average Score",
-      data: [65, 62, 70, 58, 64],
-      backgroundColor: "rgba(156, 163, 175, 0.6)",
-      borderColor: "rgba(156, 163, 175, 1)",
-      borderWidth: 2,
-    },
-  ],
-};
-
-const improvementData = {
-  labels: ["Week 1", "Week 2", "Week 3", "Week 4"],
-  datasets: [
-    {
-      label: "Performance Score",
-      data: [58, 65, 72, 78],
-      borderColor: "rgba(16, 185, 129, 1)",
-      backgroundColor: "rgba(16, 185, 129, 0.1)",
-      tension: 0.4,
-      borderWidth: 4,
-    },
-  ],
-};
-
-// Styled component for action buttons
-const ActionButton = ({ text, hoverText, icon, color, onClick }) => {
-  const [isHovered, setIsHovered] = useState(false);
-
-  return (
-    <button
-      className="relative group flex items-center justify-center w-full min-h-20 rounded-2xl overflow-hidden border-2 border-gray-200 transition-all duration-300 ease-out hover:border-gray-800 hover:scale-105"
-      style={{ backgroundColor: color }}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      onClick={onClick}
-    >
-      <div className="absolute inset-0 bg-white transform -translate-x-full group-hover:translate-x-0 transition-transform duration-300 ease-out mix-blend-overlay opacity-20" />
-      
-      <div className="relative flex items-center justify-center w-full p-4 z-10">
-        <div className="flex items-center justify-center w-12 h-12 bg-white rounded-full mr-4 transition-transform duration-300 group-hover:scale-110">
-          {icon}
-        </div>
-        <div className="relative overflow-hidden h-10 flex items-center">
-          <span
-            className={`absolute text-lg font-bold text-gray-900 transition-all duration-300 ${
-              isHovered ? "-translate-y-full opacity-0" : "translate-y-0 opacity-100"
-            }`}
-          >
-            {text}
-          </span>
-          <span
-            className={`absolute text-lg font-bold text-gray-900 transition-all duration-300 ${
-              isHovered ? "translate-y-0 opacity-100" : "translate-y-full opacity-0"
-            }`}
-          >
-            {hoverText}
-          </span>
-        </div>
-      </div>
-    </button>
-  );
-};
-
-// Styled component for feature cards
-const FeatureCard = ({ icon, title, description, delay }) => {
-  const [isVisible, setIsVisible] = useState(false);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsVisible(true);
-    }, delay);
-    return () => clearTimeout(timer);
-  }, [delay]);
-
-  return (
-    <div
-      className={`p-6 rounded-2xl border-2 border-gray-200 bg-white transition-all duration-700 transform hover:scale-105 hover:shadow-xl ${
-        isVisible
-          ? "opacity-100 translate-y-0 scale-100"
-          : "opacity-0 translate-y-8 scale-95"
-      }`}
-    >
-      <div className="flex items-center justify-center w-16 h-16 bg-blue-100 rounded-2xl mb-4 text-blue-600">
-        {icon}
-      </div>
-      <h3 className="text-xl font-bold text-gray-900 mb-2">{title}</h3>
-      <p className="text-gray-600 leading-relaxed">{description}</p>
-    </div>
-  );
-};
-
-// Styled component for trust badges
-const TrustBadge = ({ icon, title, description, delay }) => {
-  const [isVisible, setIsVisible] = useState(false);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsVisible(true);
-    }, delay);
-    return () => clearTimeout(timer);
-  }, [delay]);
-
-  return (
-    <div
-      className={`text-center p-8 rounded-2xl border-2 border-gray-200 bg-white transition-all duration-700 transform hover:scale-105 ${
-        isVisible
-          ? "opacity-100 translate-y-0 scale-100"
-          : "opacity-0 translate-y-8 scale-95"
-      }`}
-    >
-      <div className="flex justify-center mb-4">
-        <div className="flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl text-white">
-          {icon}
-        </div>
-      </div>
-      <h3 className="text-2xl font-bold text-gray-900 mb-4">{title}</h3>
-      <p className="text-gray-600 leading-relaxed">{description}</p>
-    </div>
-  );
-};
-
-// Scroll to top button
-const ScrollToTopButton = () => {
-  const [isVisible, setIsVisible] = useState(false);
-
-  useEffect(() => {
-    const toggleVisibility = () => {
-      if (window.pageYOffset > 300) {
-        setIsVisible(true);
-      } else {
-        setIsVisible(false);
-      }
-    };
-
-    window.addEventListener("scroll", toggleVisibility);
-    return () => window.removeEventListener("scroll", toggleVisibility);
-  }, []);
-
-  const scrollToTop = () => {
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
-  };
-
-  return (
-    <>
-      {isVisible && (
-        <button
-          onClick={scrollToTop}
-          className="fixed bottom-8 right-8 z-50 flex items-center justify-center w-14 h-14 bg-gray-900 text-white rounded-2xl shadow-2xl transition-all duration-300 hover:scale-110 hover:bg-gray-800"
-        >
-          <ChevronUp size={24} />
-        </button>
-      )}
-    </>
-  );
-};
-
-// Video interview simulator component
-const VideoInterviewSimulator = () => {
-  const [isRecording, setIsRecording] = useState(false);
-  const [prepTime, setPrepTime] = useState(30);
-  const [answerTime, setAnswerTime] = useState(60);
-  const [currentStep, setCurrentStep] = useState("ready"); // ready, preparing, answering, completed
-
-  useEffect(() => {
-    let timer;
-    if (currentStep === "preparing" && prepTime > 0) {
-      timer = setInterval(() => {
-        setPrepTime((time) => time - 1);
-      }, 1000);
-    } else if (currentStep === "preparing" && prepTime === 0) {
-      setCurrentStep("answering");
-    } else if (currentStep === "answering" && answerTime > 0) {
-      timer = setInterval(() => {
-        setAnswerTime((time) => time - 1);
-      }, 1000);
-    } else if (currentStep === "answering" && answerTime === 0) {
-      setCurrentStep("completed");
-    }
-
-    return () => clearInterval(timer);
-  }, [currentStep, prepTime, answerTime]);
-
-  // Example: Simulate an API call with auth headers on completion
-  const uploadInterviewResponse = async () => {
-    try {
-      const response = await fetchWithAuth(
-        `${BACKEND_URL}/api/interview/recording`,
-        {
-          method: "POST",
-          body: JSON.stringify({
-            // Add proper payload fields
-            answer: "mocked audio/video data here",
-          })
-        }
-      );
-      // You may want to handle .json() or errors here
-      return response.ok;
-    } catch (e) {
-      // Optionally handle error
-      return false;
-    }
-  };
-
-  const startInterview = () => {
-    setCurrentStep("preparing");
-    setPrepTime(30);
-    setAnswerTime(60);
-  };
-
-  const resetInterview = () => {
-    setCurrentStep("ready");
-    setPrepTime(30);
-    setAnswerTime(60);
-  };
-
-  const stopRecording = async () => {
-    setCurrentStep("completed");
-    // You could await uploadInterviewResponse() here if needed
-    await uploadInterviewResponse();
-  };
-
-  return (
-    <div className="bg-white rounded-2xl border-2 border-gray-200 p-8 shadow-lg">
-      <h3 className="text-2xl font-bold text-gray-900 mb-6 text-center">
-        Try Our Interview Simulator
-      </h3>
-      
-      <div className="relative bg-gray-900 rounded-xl overflow-hidden mb-6 aspect-video flex items-center justify-center">
-        {currentStep === "ready" && (
-          <div className="text-center text-white">
-            <Video size={64} className="mx-auto mb-4 opacity-50" />
-            <p className="text-lg">Click start to begin mock interview</p>
-          </div>
-        )}
-        
-        {(currentStep === "preparing" || currentStep === "answering") && (
-          <>
-            <div className="absolute top-4 left-4 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold">
-              {isRecording ? "REC" : "LIVE"}
-            </div>
-            <div className="absolute top-4 right-4 bg-black bg-opacity-50 text-white px-3 py-1 rounded-full text-sm">
-              {currentStep === "preparing" ? `Prep: ${prepTime}s` : `Answer: ${answerTime}s`}
-            </div>
-            <div className="w-32 h-32 bg-gradient-to-br from-blue-400 to-purple-600 rounded-full flex items-center justify-center">
-              <div className="w-24 h-24 bg-gray-800 rounded-full flex items-center justify-center">
-                <UserCheck size={32} className="text-white" />
-              </div>
-            </div>
-          </>
-        )}
-        
-        {currentStep === "completed" && (
-          <div className="text-center text-white">
-            <CheckCircle size={64} className="mx-auto mb-4 text-green-400" />
-            <p className="text-lg">Response recorded! Analyzing your performance...</p>
-          </div>
-        )}
-      </div>
-
-      <div className="space-y-4">
-        {currentStep === "ready" && (
-          <button
-            onClick={startInterview}
-            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 rounded-xl font-bold text-lg transition-all duration-300 hover:from-blue-700 hover:to-purple-700 hover:scale-105"
-          >
-            Start Practice Interview
-          </button>
-        )}
-        
-        {currentStep === "preparing" && (
-          <div className="text-center">
-            <div className="bg-yellow-100 border border-yellow-400 text-yellow-800 px-4 py-3 rounded-xl mb-4">
-              <p className="font-bold">Preparation Time</p>
-              <p className="text-2xl font-bold">{prepTime} seconds remaining</p>
-              <p className="text-sm mt-2">Think about your answer before recording</p>
-            </div>
-          </div>
-        )}
-        
-        {currentStep === "answering" && (
-          <div className="text-center">
-            <div className="bg-green-100 border border-green-400 text-green-800 px-4 py-3 rounded-xl mb-4">
-              <p className="font-bold">Recording Your Answer</p>
-              <p className="text-2xl font-bold">{answerTime} seconds remaining</p>
-              <p className="text-sm mt-2">Speak clearly and confidently</p>
-            </div>
-            <button
-              onClick={stopRecording}
-              className="w-full bg-red-600 text-white py-4 rounded-xl font-bold text-lg transition-all duration-300 hover:bg-red-700 hover:scale-105"
-            >
-              Stop Recording
-            </button>
-          </div>
-        )}
-        
-        {currentStep === "completed" && (
-          <div className="space-y-3">
-            <button
-              onClick={resetInterview}
-              className="w-full bg-gray-900 text-white py-4 rounded-xl font-bold text-lg transition-all duration-300 hover:bg-gray-800 hover:scale-105"
-            >
-              Try Another Question
-            </button>
-            <button className="w-full border-2 border-gray-300 text-gray-700 py-4 rounded-xl font-bold text-lg transition-all duration-300 hover:border-gray-800 hover:scale-105">
-              View Detailed Analysis
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-const LandingPage = () => {
-  const [showTitle, setShowTitle] = useState(false);
-  const [currentQuoteIndex, setCurrentQuoteIndex] = useState(0);
-  const [quoteFade, setQuoteFade] = useState(true);
+const Navbar = () => {
   const navigate = useNavigate();
+  return (
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200 transition-all duration-300">
+      <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+        <div className="flex items-center gap-2 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+           <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-200">
+              <Sparkles size={20} fill="currentColor" />
+           </div>
+           <span className="text-2xl font-bold text-slate-900 tracking-tight">verve.io</span>
+        </div>
+        <div className="hidden md:flex items-center gap-8">
+           {['Features', 'How it Works', 'Success Stories'].map((item) => (
+             <a 
+               key={item} 
+               href={`#${item.toLowerCase().replace(/\s+/g, '-')}`} 
+               className="text-sm font-medium text-slate-600 hover:text-indigo-600 transition-colors relative group"
+             >
+               {item}
+               <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-indigo-600 transition-all group-hover:w-full"></span>
+             </a>
+           ))}
+        </div>
+        <div className="flex items-center gap-4">
+           <button 
+             onClick={() => navigate('/login')}
+             className="text-slate-600 font-semibold text-sm hover:text-indigo-600 transition-colors"
+           >
+             Log in
+           </button>
+           <button 
+             onClick={() => navigate('/register')}
+             className="bg-slate-900 text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-slate-800 transition-all hover:scale-105 active:scale-95 shadow-lg shadow-slate-900/20"
+           >
+             Get Started
+           </button>
+        </div>
+      </div>
+    </nav>
+  );
+};
 
-  const interviewQuotes = [
-    "Your path to MBA admission success",
-    "AI-powered interview preparation",
-    "Personalized feedback for every response",
-    "Practice with confidence, perform with excellence",
-    "From preparation to admission",
-    "Smart interviews for smarter candidates",
-    "Your competitive edge in MBA admissions",
-    "Real-time feedback, real results"
+const HeroSection = () => {
+  const navigate = useNavigate();
+  
+  return (
+    <section className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden bg-gradient-to-b from-slate-50 to-white">
+      {/* Background Blobs */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full overflow-hidden -z-10 pointer-events-none">
+         <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-blue-400/20 rounded-full blur-[100px] mix-blend-multiply animate-pulse"></div>
+         <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-purple-400/20 rounded-full blur-[100px] mix-blend-multiply animate-pulse animation-delay-2000"></div>
+         <div className="absolute -bottom-32 left-1/3 w-[500px] h-[500px] bg-pink-400/20 rounded-full blur-[100px] mix-blend-multiply animate-pulse animation-delay-4000"></div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-6 text-center">
+        <motion.div
+           initial={{ opacity: 0, y: 30 }}
+           animate={{ opacity: 1, y: 0 }}
+           transition={{ duration: 0.8, ease: "easeOut" }}
+        >
+          <motion.div 
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.2, duration: 0.5 }}
+            className="inline-block py-1 px-3 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-600 text-xs font-bold uppercase tracking-wider mb-6 hover:bg-indigo-100 transition-colors cursor-default"
+          >
+             🚀 The Future of Interview Prep
+          </motion.div>
+          <h1 className="text-5xl md:text-7xl font-black text-slate-900 leading-tight mb-8 tracking-tight drop-shadow-sm">
+             Master Your MBA Interview <br className="hidden md:block"/>
+             <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">
+               With AI Precision
+             </span>
+          </h1>
+          <p className="text-xl md:text-2xl text-slate-600 max-w-2xl mx-auto mb-10 leading-relaxed font-light">
+             Unlock your potential with real-time AI feedback on confidence, clarity, and content. 
+             Join thousands of candidates getting into top b-schools.
+          </p>
+          
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+             <motion.button
+               whileHover={{ scale: 1.05 }}
+               whileTap={{ scale: 0.95 }}
+               onClick={() => navigate('/register')}
+               className="w-full sm:w-auto px-8 py-4 bg-indigo-600 text-white rounded-2xl font-bold text-lg shadow-xl shadow-indigo-500/30 flex items-center justify-center gap-2 hover:bg-indigo-700 transition-colors"
+             >
+                Start Free Trial
+                <ArrowRight size={20} />
+             </motion.button>
+             <motion.button
+               whileHover={{ scale: 1.05 }}
+               whileTap={{ scale: 0.95 }}
+               onClick={() => document.getElementById('demo-section').scrollIntoView({ behavior: 'smooth' })}
+               className="w-full sm:w-auto px-8 py-4 bg-white text-slate-700 border border-slate-200 rounded-2xl font-bold text-lg hover:bg-slate-50 hover:border-slate-300 transition-all flex items-center justify-center gap-2 shadow-sm"
+             >
+                <Play size={20} className="fill-current" />
+                Watch Demo
+             </motion.button>
+          </div>
+
+          <div className="mt-16 pt-8 border-t border-slate-200/60 max-w-4xl mx-auto">
+             <p className="text-sm font-semibold text-slate-400 uppercase tracking-widest mb-6">Trusted by candidates from</p>
+             <div className="flex flex-wrap items-center justify-center gap-x-12 gap-y-8 text-slate-400 grayscale opacity-60 hover:opacity-100 transition-opacity duration-500">
+                <span className="font-serif text-2xl font-bold">Harvard</span>
+                <span className="font-serif text-2xl font-bold">Stanford</span>
+                <span className="font-serif text-2xl font-bold">Wharton</span>
+                <span className="font-serif text-2xl font-bold">INSEAD</span>
+                <span className="font-serif text-2xl font-bold">LBS</span>
+             </div>
+          </div>
+        </motion.div>
+      </div>
+    </section>
+  );
+};
+
+const FeatureCard = ({ icon: Icon, title, description, color, delay }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    whileInView={{ opacity: 1, y: 0 }}
+    viewport={{ once: true }}
+    transition={{ delay, duration: 0.5 }}
+    whileHover={{ y: -10, transition: { duration: 0.2 } }}
+    className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/50 relative overflow-hidden group h-full"
+  >
+    <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${color} opacity-10 rounded-bl-full -mr-10 -mt-10 transition-transform duration-500 group-hover:scale-150`}></div>
+    
+    <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${color} flex items-center justify-center text-white mb-6 shadow-lg transform transition-transform group-hover:rotate-6`}>
+      <Icon size={24} />
+    </div>
+    <h3 className="text-xl font-bold text-slate-900 mb-3">{title}</h3>
+    <p className="text-slate-600 leading-relaxed text-sm">{description}</p>
+  </motion.div>
+);
+
+const FeaturesSection = () => {
+  const features = [
+    {
+       icon: Brain,
+       title: "AI Question Generation",
+       description: "Custom behavioral questions generated from your resume and target program profile.",
+       color: "from-blue-500 to-indigo-600"
+    },
+    {
+       icon: Video,
+       title: "Real-time Analysis",
+       description: "Get instant feedback on your speaking pace, eye contact, and emotional sentiment.",
+       color: "from-purple-500 to-pink-600"
+    },
+    {
+       icon: Upload,
+       title: "Resume Parser",
+       description: "Upload your CV to uncover hidden gaps and get tailored improvement suggestions.",
+       color: "from-amber-400 to-orange-500"
+    },
+    {
+       icon: TrendingUp,
+       title: "Progress Tracking",
+       description: "Visualize your improvement over time with detailed analytics and performance charts.",
+       color: "from-emerald-400 to-teal-600"
+    }
   ];
 
+  return (
+    <section id="features" className="py-24 bg-slate-50 relative">
+       <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-5xl font-bold text-slate-900 mb-6">Everything you need to accept that offer</h2>
+            <p className="text-xl text-slate-600 max-w-2xl mx-auto">Comprehensive tools designed by industry experts to give you the competitive edge in your admissions journey.</p>
+          </div>
+          
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+             {features.map((f, i) => (
+               <FeatureCard key={i} {...f} delay={i * 0.1} />
+             ))}
+          </div>
+       </div>
+    </section>
+  );
+};
+
+// Simplified Simulator for visual appeal
+const MiniSimulator = () => {
+  const [step, setStep] = useState(0); // 0: Idle, 1: Countdown, 2: Recording
+  
   useEffect(() => {
-    const titleTimer = setTimeout(() => {
-      setShowTitle(true);
-    }, 100);
-
-    const quoteTimer = setInterval(() => {
-      setQuoteFade(false);
-      setTimeout(() => {
-        setCurrentQuoteIndex((prev) => (prev + 1) % interviewQuotes.length);
-        setQuoteFade(true);
-      }, 200);
-    }, 4000);
-
-    return () => {
-      clearTimeout(titleTimer);
-      clearInterval(quoteTimer);
-    };
+     const interval = setInterval(() => {
+        setStep(prev => (prev + 1) % 3);
+     }, 3500);
+     return () => clearInterval(interval);
   }, []);
 
-  const handleGetStarted = () => {
-    // Example: You might want to log this action with an API call with auth
-    // fetchWithAuth(`${BACKEND_URL}/api/track/get-started`, { method: "POST" });
-    navigate("/login");
-  };
-
-  const handleTryDemo = () => {
-    // Scroll to demo section
-    document.getElementById("demo-section").scrollIntoView({ behavior: "smooth" });
-    // Example: Log demo action if needed, using auth headers
-    // fetchWithAuth(`${BACKEND_URL}/api/track/try-demo`, { method: "POST" });
-  };
-
   return (
-    <div className="w-full min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      {/* Text Ticker */}
-      <div className="fixed top-0 left-0 w-full overflow-hidden z-50 bg-gray-900 py-3">
-        <div className="flex whitespace-nowrap text-white font-mono font-bold text-sm uppercase">
-          <div className="animate-marquee flex">
-            <span className="px-8">• 90% OF TOP MBA CANDIDATES PRACTICE WITH MOCK INTERVIEWS •</span>
-            <span className="px-8">• AI-POWERED PERSONALIZED FEEDBACK •</span>
-            <span className="px-8">• INSTANT PERFORMANCE ANALYSIS •</span>
-            <span className="px-8">• RESUME-BASED CUSTOM QUESTIONS •</span>
-            <span className="px-8">• 90% OF TOP MBA CANDIDATES PRACTICE WITH MOCK INTERVIEWS •</span>
-            <span className="px-8">• AI-POWERED PERSONALIZED FEEDBACK •</span>
-            <span className="px-8">• INSTANT PERFORMANCE ANALYSIS •</span>
-            <span className="px-8">• RESUME-BASED CUSTOM QUESTIONS •</span>
+    <div className="relative mx-auto max-w-4xl bg-slate-900 rounded-3xl overflow-hidden shadow-2xl ring-8 ring-slate-900/10 transform transition-all duration-500 hover:scale-[1.02] hover:shadow-3xl">
+       {/* Mock Browser Header */}
+       <div className="bg-slate-800 px-4 py-3 flex items-center gap-2 select-none">
+          <div className="w-3 h-3 rounded-full bg-red-400"></div>
+          <div className="w-3 h-3 rounded-full bg-amber-400"></div>
+          <div className="w-3 h-3 rounded-full bg-green-400"></div>
+          <div className="ml-4 bg-slate-700/50 px-3 py-1 rounded-md text-xs text-slate-400 flex-1 text-center font-mono truncate">
+            https://verve.io/interview/active
           </div>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="w-full flex flex-col items-center pt-32 pb-16 px-4">
-        <div className="text-center max-w-7xl w-full">
-          {/* Main Title */}
-          <h1
-            className="font-bold leading-none select-none text-center mb-8"
-            style={{
-              fontSize: "clamp(4rem, 15vw, 12rem)",
-              color: "#1f2937",
-              margin: 0,
-              padding: 0,
-              lineHeight: 0.9,
-            }}
-          >
-            {"verve.io".split("").map((letter, index) => (
-              <span
-                key={index}
-                className={`inline-block transition-all duration-700 ease-out ${
-                  showTitle
-                    ? "opacity-100 transform translate-y-0 scale-100"
-                    : "opacity-0 transform translate-y-12 scale-95"
-                }`}
-                style={{
-                  transitionDelay: showTitle ? `${index * 0.05}s` : "0s",
-                }}
-              >
-                {letter}
-              </span>
-            ))}
-          </h1>
-
-          {/* Subtitle */}
-          <div
-            className={`transition-opacity duration-700 delay-1000 ${
-              showTitle ? "opacity-100" : "opacity-0"
-            }`}
-          >
-            <h2
-              className="text-4xl md:text-4xl font-bold text-gray-800 mb-8 mt-10"
-              style={{ fontFamily: "Georgia, serif" }}
-            >
-            Unlock your potential. Transform how you learn, practice, and master your MBA interview.
-            </h2>
-          </div>
-
-          {/* Quotes */}
-          <div
-            className={`mt-8 transition-opacity duration-700 delay-1200 ${
-              showTitle ? "opacity-100" : "opacity-0"
-            }`}
-          >
-            <div className="relative overflow-visible mx-auto max-w-4xl min-h-20 flex items-center justify-center">
-              <div
-                className={`text-center transition-opacity duration-500 ease-in-out flex items-center justify-center ${
-                  quoteFade ? "opacity-100" : "opacity-0"
-                }`}
-                style={{
-                  fontSize: "clamp(1.2rem, 2.5vw, 1.8rem)",
-                  color: "#4b5563",
-                  fontWeight: "500",
-                  padding: "0 1rem",
-                  whiteSpace: "normal",
-                  textAlign: "center",
-                  lineHeight: 1.3,
-                }}
-              >
-                <Star className="w-6 h-6 mr-3 text-yellow-500 flex-shrink-0" />
-                {interviewQuotes[currentQuoteIndex]}
-                <Star className="w-6 h-6 ml-3 text-yellow-500 flex-shrink-0" />
-              </div>
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div
-            className={`mt-12 mb-16 transition-opacity duration-700 delay-1500 ${
-              showTitle ? "opacity-100" : "opacity-0"
-            }`}
-          >
-            <div className="flex flex-col sm:flex-row gap-6 justify-center items-center max-w-2xl mx-auto">
-              <ActionButton
-                text="Upload Resume"
-                hoverText="Get Started"
-                color="#dbeafe"
-                icon={<Upload size={24} />}
-                onClick={handleGetStarted}
-              />
-              <ActionButton
-                text="Try Demo"
-                hoverText="Practice Now"
-                color="#fef3c7"
-                icon={<Play size={24} />}
-                onClick={handleTryDemo}
-              />
-              <ActionButton
-                text="View Analysis"
-                hoverText="See Results"
-                color="#dcfce7"
-                icon={<BarChart3 size={24} />}
-                onClick={() => document.getElementById("features-section").scrollIntoView({ behavior: "smooth" })}
-              />
-            </div>
-          </div>
-
-          {/* Features Section */}
-          <div id="features-section" className="mt-20 py-16">
-            <h2 className="text-5xl font-bold text-gray-900 mb-4 text-center">
-              How It Works
-            </h2>
-            <p className="text-xl text-gray-600 mb-12 text-center max-w-3xl mx-auto">
-              Our AI-powered platform transforms your MBA interview preparation with personalized, data-driven insights
-            </p>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-7xl mx-auto">
-              <FeatureCard
-                icon={<Upload size={32} />}
-                title="Upload Your Profile"
-                description="Submit your resume, essays, and application materials for personalized question generation"
-                delay={200}
-              />
-              <FeatureCard
-                icon={<Brain size={32} />}
-                title="AI Question Generation"
-                description="Get custom behavioral, situational, and school-specific questions based on your background"
-                delay={400}
-              />
-              <FeatureCard
-                icon={<Video size={32} />}
-                title="Practice Interviews"
-                description="Record your responses with realistic interview simulation and timed preparation"
-                delay={600}
-              />
-              <FeatureCard
-                icon={<BarChart3 size={32} />}
-                title="Instant Feedback"
-                description="Receive comprehensive analysis of your verbal and non-verbal communication skills"
-                delay={800}
-              />
-            </div>
-          </div>
-
-          {/* Demo Section */}
-          <div id="demo-section" className="mt-20 py-16">
-            <div className="max-w-6xl mx-auto">
-              <h2 className="text-5xl font-bold text-gray-900 mb-4 text-center">
-                Experience the Future of Interview Prep
-              </h2>
-              <p className="text-xl text-gray-600 mb-12 text-center max-w-3xl mx-auto">
-                Try our interactive interview simulator to see how AI can transform your preparation
-              </p>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
-                <VideoInterviewSimulator />
-                
-                <div className="space-y-6">
-                  <div className="bg-white rounded-2xl border-2 border-gray-200 p-6 shadow-lg">
-                    <h4 className="text-xl font-bold text-gray-900 mb-4">Sample MBA Interview Question</h4>
-                    <div className="bg-gray-50 rounded-xl p-6 border-l-4 border-blue-500">
-                      <p className="text-lg text-gray-700 italic">
-                        "Describe a time when you had to lead a team through a significant challenge. What was your approach, and what did you learn about leadership from this experience?"
-                      </p>
+       </div>
+       
+       <div className="relative aspect-video bg-slate-950 flex flex-col md:flex-row">
+          <div className="flex-1 p-8 flex flex-col justify-center border-r border-slate-800 relative overflow-hidden">
+             
+             {/* Dynamic State Overlay */}
+             <div className="absolute top-4 left-4">
+                {step === 0 && <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Waiting...</span>}
+                {step === 1 && <span className="text-amber-500 text-xs font-bold uppercase tracking-wider">Preparing...</span>}
+                {step === 2 && (
+                    <div className="inline-flex items-center gap-2">
+                         <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                         <span className="text-red-500 text-xs font-bold uppercase tracking-wider">Live Analysis</span>
                     </div>
-                    <div className="mt-4 flex items-center text-gray-600">
-                      <Clock size={16} className="mr-2" />
-                      <span className="text-sm">Preparation: 30 seconds • Answer: 1 minute</span>
+                )}
+             </div>
+
+             <h3 className="text-xl md:text-2xl text-white font-medium mb-6 leading-snug relative z-10">
+               "Tell me about a time you led a team through a significant crisis."
+             </h3>
+             
+             <div className="space-y-4 relative z-10 bg-slate-900/50 p-4 rounded-xl backdrop-blur-sm border border-slate-800">
+               <div className="space-y-2">
+                 <div className="flex justify-between text-xs text-slate-400">
+                    <span>Clarity</span>
+                    <span className="text-blue-400">High</span>
+                 </div>
+                 <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden w-full">
+                    <motion.div 
+                      animate={{ width: ["10%", "60%", "40%", "85%"] }} 
+                      transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                      className="h-full bg-blue-500"
+                    />
+                 </div>
+               </div>
+
+               <div className="space-y-2">
+                 <div className="flex justify-between text-xs text-slate-400">
+                    <span>Confidence</span>
+                    <span className="text-purple-400">88/100</span>
+                 </div>
+                 <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden w-full">
+                    <motion.div 
+                      animate={{ width: ["80%", "88%", "85%", "90%"] }} 
+                      transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                      className="h-full bg-purple-500"
+                    />
+                 </div>
+               </div>
+             </div>
+          </div>
+          
+          <div className="w-1/3 bg-slate-900 relative hidden md:block">
+             {/* Fake Person Placeholder */}
+             <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-slate-900 via-slate-800 to-slate-900">
+                <div className="w-24 h-24 bg-slate-700/50 rounded-full flex items-center justify-center animate-pulse">
+                   <Users size={32} className="text-slate-500" />
+                </div>
+             </div>
+             
+             {/* AI Overlay Bubble */}
+             <AnimatePresence mode="wait">
+               {step === 2 && (
+                 <motion.div 
+                   initial={{ opacity: 0, y: 10, scale: 0.9 }}
+                   animate={{ opacity: 1, y: 0, scale: 1 }}
+                   exit={{ opacity: 0, scale: 0.9 }}
+                   className="absolute bottom-6 left-6 right-6 bg-white/10 backdrop-blur-md p-3 rounded-xl border border-white/10 shadow-lg"
+                 >
+                    <div className="flex items-start gap-3">
+                       <div className="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center text-green-400 shrink-0">
+                          <CheckCircle size={14} />
+                       </div>
+                       <div>
+                          <p className="text-xs text-green-200 font-bold mb-0.5">Great Eye Contact!</p>
+                          <p className="text-[10px] text-slate-400 leading-tight">You're engaging well with the camera.</p>
+                       </div>
                     </div>
-                  </div>
-
-                  <div className="bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl p-6 text-white">
-                    <h4 className="text-xl font-bold mb-4">What Our AI Analyzes</h4>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="flex items-center">
-                        <CheckCircle size={20} className="mr-3" />
-                        <span>Communication Clarity</span>
-                      </div>
-                      <div className="flex items-center">
-                        <CheckCircle size={20} className="mr-3" />
-                        <span>Confidence Level</span>
-                      </div>
-                      <div className="flex items-center">
-                        <CheckCircle size={20} className="mr-3" />
-                        <span>Content Structure</span>
-                      </div>
-                      <div className="flex items-center">
-                        <CheckCircle size={20} className="mr-3" />
-                        <span>Body Language</span>
-                      </div>
-                      <div className="flex items-center">
-                        <CheckCircle size={20} className="mr-3" />
-                        <span>Answer Relevance</span>
-                      </div>
-                      <div className="flex items-center">
-                        <CheckCircle size={20} className="mr-3" />
-                        <span>Time Management</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+                 </motion.div>
+               )}
+             </AnimatePresence>
           </div>
+       </div>
+    </div>
+  );
+};
 
-          {/* Trust Badges Section */}
-          <div className="mt-20 py-16">
-            <div className="max-w-7xl mx-auto">
-              <h2 className="text-5xl font-bold text-gray-900 mb-4 text-center">
-                Why choose verve.io?
-              </h2>
-              <p className="text-xl text-gray-600 mb-12 text-center max-w-3xl mx-auto">
-                Join thousands of successful MBA candidates who transformed their interview skills with our platform
-              </p>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                <TrustBadge
-                  icon={<Zap size={32} />}
-                  title="Instant Feedback"
-                  description="Get real-time analysis of your performance with actionable improvement suggestions"
-                  delay={100}
-                />
-                <TrustBadge
-                  icon={<Shield size={32} />}
-                  title="Personalized Questions"
-                  description="Questions tailored to your specific background, goals, and target schools"
-                  delay={200}
-                />
-                <TrustBadge
-                  icon={<TrendingUp size={32} />}
-                  title="Progress Tracking"
-                  description="Monitor your improvement over time with detailed analytics and progress reports"
-                  delay={300}
-                />
-                <TrustBadge
-                  icon={<Users size={32} />}
-                  title="Expert Designed"
-                  description="Built with insights from MBA admissions consultants and industry experts"
-                  delay={400}
-                />
-              </div>
+const DemoSection = () => (
+   <section id="demo-section" className="py-24 bg-white overflow-hidden">
+      <div className="max-w-7xl mx-auto px-6">
+         <div className="flex flex-col lg:flex-row items-center gap-16">
+            <div className="lg:w-1/2">
+               <motion.div
+                 initial={{ opacity: 0, x: -20 }}
+                 whileInView={{ opacity: 1, x: 0 }}
+                 viewport={{ once: true }}
+               >
+                   <div className="flex items-center gap-2 mb-4">
+                      <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
+                      <span className="text-sm font-bold text-indigo-600 uppercase tracking-widest">Live Demo</span>
+                   </div>
+                   <h2 className="text-4xl font-bold text-slate-900 mb-6 leading-tight">Real-time coaching right in your browser</h2>
+                   <p className="text-xl text-slate-600 mb-8 leading-relaxed">
+                      Our advanced AI monitors your verbal and non-verbal cues as you speak, providing instant nudges to improve your delivery on the fly. No downloads required.
+                   </p>
+                   <ul className="space-y-4 mb-8">
+                      {[
+                        "Live Speech Rate Monitoring",
+                        "Filler Word Detection (um, ah, like)",
+                        "Sentiment & Tone Analysis",
+                        "Eye Contact Tracking"
+                      ].map((item, i) => (
+                        <motion.li 
+                          key={i} 
+                          initial={{ opacity: 0, x: -10 }}
+                          whileInView={{ opacity: 1, x: 0 }}
+                          viewport={{ once: true }}
+                          transition={{ delay: i * 0.1 }}
+                          className="flex items-center gap-3 text-slate-700 bg-slate-50 p-3 rounded-xl border border-slate-100"
+                        >
+                           <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center text-green-600 shrink-0">
+                              <CheckCircle size={14} />
+                           </div>
+                           <span className="font-medium">{item}</span>
+                        </motion.li>
+                      ))}
+                   </ul>
+               </motion.div>
             </div>
-          </div>
-
-          {/* Stats Section */}
-          <div className="mt-20 py-16 bg-white rounded-3xl shadow-xl">
-            <div className="max-w-6xl mx-auto px-4">
-              <h2 className="text-5xl font-bold text-gray-900 mb-12 text-center">
-                Proven Results
-              </h2>
-              
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-                <div>
-                  <div className="text-4xl font-bold text-blue-600 mb-2">94%</div>
-                  <div className="text-gray-600">Success Rate</div>
-                  <div className="text-sm text-gray-500 mt-1">Users feel more confident</div>
-                </div>
-                <div>
-                  <div className="text-4xl font-bold text-green-600 mb-2">2.3x</div>
-                  <div className="text-gray-600">Improvement</div>
-                  <div className="text-sm text-gray-500 mt-1">Faster skill development</div>
-                </div>
-                <div>
-                  <div className="text-4xl font-bold text-purple-600 mb-2">50+</div>
-                  <div className="text-gray-600">Business Schools</div>
-                  <div className="text-sm text-gray-500 mt-1">School-specific questions</div>
-                </div>
-                <div>
-                  <div className="text-4xl font-bold text-orange-600 mb-2">10k+</div>
-                  <div className="text-gray-600">Practice Sessions</div>
-                  <div className="text-sm text-gray-500 mt-1">Completed monthly</div>
-                </div>
-              </div>
-
-              <div className="mt-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl p-8 text-white text-center">
-                <h3 className="text-2xl font-bold mb-4">Ready to Ace Your MBA Interview?</h3>
-                <p className="text-lg mb-6 opacity-90">
-                  Join thousands of successful candidates who transformed their interview skills with AI-powered coaching
-                </p>
-                <button
-                  onClick={handleGetStarted}
-                  className="bg-white text-gray-900 px-8 py-4 rounded-xl font-bold text-lg transition-all duration-300 hover:scale-105 hover:shadow-2xl inline-flex items-center"
-                >
-                  Start Your Journey Today
-                  <ArrowRight size={20} className="ml-2" />
-                </button>
-              </div>
+            <div className="lg:w-1/2 w-full">
+               <MiniSimulator />
             </div>
-          </div>
-        </div>
+         </div>
       </div>
+   </section>
+);
 
-      {/* Fixed Sign Up Button */}
-      <div className="fixed bottom-6 left-6 z-50">
-        <button
-          onClick={handleGetStarted}
-          className="bg-gray-900 text-white px-6 py-3 rounded-xl font-bold transition-all duration-300 hover:scale-105 hover:shadow-2xl flex items-center"
-        >
-          <UserCheck size={20} className="mr-2" />
-          Get Started
-        </button>
-      </div>
+const LandingPage = () => {
+  return (
+    <div className="min-h-screen bg-white font-sans selection:bg-indigo-100 selection:text-indigo-900 scroll-smooth">
+       <Navbar />
+       <HeroSection />
+       <FeaturesSection />
+       <DemoSection />
+       
+       {/* CTA Section */}
+       <section className="py-24 bg-slate-900 relative overflow-hidden">
+          <div className="absolute inset-0 bg-blue-600/10"></div>
+          {/* Animated background particles effect could go here */}
+          <div className="relative max-w-4xl mx-auto px-6 text-center">
+             <motion.h2 
+               initial={{ opacity: 0, y: 20 }}
+               whileInView={{ opacity: 1, y: 0 }}
+               viewport={{ once: true }}
+               className="text-4xl md:text-6xl font-black text-white mb-8 tracking-tight"
+             >
+               Ready to transform your interview skills?
+             </motion.h2>
+             <motion.p 
+               initial={{ opacity: 0, y: 20 }}
+               whileInView={{ opacity: 1, y: 0 }}
+               viewport={{ once: true }}
+               transition={{ delay: 0.1 }}
+               className="text-xl text-slate-300 mb-12 max-w-2xl mx-auto leading-relaxed"
+             >
+                Join thousands of students who have secured offers from Harvard, Stanford, and Wharton.
+             </motion.p>
+             <motion.button 
+               whileHover={{ scale: 1.05 }}
+               whileTap={{ scale: 0.95 }}
+               className="bg-white text-slate-900 px-10 py-5 rounded-2xl font-bold text-xl hover:bg-indigo-50 transition-all shadow-2xl shadow-indigo-500/20"
+               onClick={() => window.location.href = '/#/register'} // Hash router handling
+             >
+                Get Started for Free
+             </motion.button>
+             <p className="mt-8 text-sm text-slate-500 font-medium">No credit card required • Cancel anytime</p>
+          </div>
+       </section>
 
-      <ScrollToTopButton />
+       {/* Footer */}
+       <footer className="bg-slate-950 py-12 border-t border-slate-900">
+          <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center text-slate-400 text-sm">
+             <div className="flex items-center gap-2 mb-4 md:mb-0 opacity-80 hover:opacity-100 transition-opacity">
+                <Sparkles size={16} className="text-indigo-500" />
+                <span className="font-bold text-slate-200">verve.io</span>
+                <span className="border-l border-slate-800 pl-2 ml-2">© 2024 All rights reserved</span>
+             </div>
+             <div className="flex gap-8">
+                <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
+                <a href="#" className="hover:text-white transition-colors">Terms of Service</a>
+                <a href="#" className="hover:text-white transition-colors">Contact Support</a>
+             </div>
+          </div>
+       </footer>
     </div>
   );
 };
